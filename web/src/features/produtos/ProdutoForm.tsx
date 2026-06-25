@@ -5,6 +5,8 @@ import { useEffect } from 'react'
 import { useFirestoreCollection } from '@/hooks/useFirestore'
 import { useCalculadoraPrecificacao } from './useCalculadoraPrecificacao'
 import type { InsumoFormData } from '../insumos/InsumoForm'
+import { GasCalculatorModal } from './components/GasCalculatorModal'
+import { useState } from 'react'
 
 const produtoSchema = z.object({
   nome: z.string().min(1, 'Nome é obrigatório'),
@@ -44,6 +46,9 @@ export function ProdutoForm({ initialData, onSubmit, onCancel }: Props) {
       insumos: []
     }
   })
+
+  const [isGasModalOpen, setIsGasModalOpen] = useState(false)
+  const insumosGas = insumosDB?.filter(i => i.categoria === 'Gás') || []
 
   const { fields, append, remove } = useFieldArray({ control, name: 'insumos' })
 
@@ -143,11 +148,38 @@ export function ProdutoForm({ initialData, onSubmit, onCancel }: Props) {
             </button>
           </div>
         ))}
-        <button type="button" onClick={() => append({ insumoId: '', nomeInsumo: '', unidade: '', quantidadeUsadaReceita: 0, custoProporcionalAtual: 0 })} className="mt-2 text-sm text-blue-600 hover:underline">
-          + Adicionar Ingrediente
-        </button>
+        <div className="flex gap-4 mt-2">
+          <button type="button" onClick={() => append({ insumoId: '', nomeInsumo: '', unidade: '', quantidadeUsadaReceita: 0, custoProporcionalAtual: 0 })} className="text-sm text-blue-600 hover:underline">
+            + Adicionar Ingrediente
+          </button>
+          <button type="button" onClick={() => setIsGasModalOpen(true)} className="text-sm text-orange-500 hover:underline flex items-center gap-1">
+            🔥 Adicionar Gás à Receita
+          </button>
+        </div>
         {errors.insumos && <div className="text-red-500 text-sm mt-1">{errors.insumos.message}</div>}
       </div>
+
+      {isGasModalOpen && (
+        <GasCalculatorModal 
+          insumosGás={insumosGas}
+          onCancel={() => setIsGasModalOpen(false)}
+          onConfirm={(data) => {
+            const insumoRef = insumosDB?.find(i => i.id === data.insumoId)
+            let custoProporcional = 0
+            if (insumoRef && insumoRef.pesoVolumeTotal > 0) {
+              custoProporcional = (insumoRef.precoCompra / insumoRef.pesoVolumeTotal) * data.gramasCalculadas
+            }
+            append({
+              insumoId: data.insumoId,
+              nomeInsumo: data.nomeInsumo,
+              unidade: data.unidade,
+              quantidadeUsadaReceita: data.gramasCalculadas,
+              custoProporcionalAtual: custoProporcional
+            })
+            setIsGasModalOpen(false)
+          }}
+        />
+      )}
 
       <div className="border-t pt-4 bg-gray-50 -mx-6 px-6 pb-6">
         <h4 className="font-semibold mb-4 pt-4">Precificação</h4>
