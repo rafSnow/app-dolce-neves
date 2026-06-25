@@ -132,99 +132,182 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
   const valorTotal = watch('valorTotal')
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 bg-white p-6 border rounded-lg shadow-sm">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Cliente</label>
-          <select {...register('clienteId')} onChange={(e) => {
-            register('clienteId').onChange(e)
-            handleClienteSelect(e.target.value)
-          }} className="w-full border rounded p-2">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 pb-4">
+      
+      {/* SEÇÃO 1: INFORMAÇÕES BÁSICAS */}
+      <div className="flex flex-col md:flex-row gap-4 md:gap-5">
+        <div className="flex-1">
+          <label className="block text-sm font-semibold text-dolce-marrom mb-1.5">Cliente</label>
+          <select 
+            {...register('clienteId')} 
+            onChange={(e) => {
+              register('clienteId').onChange(e)
+              handleClienteSelect(e.target.value)
+            }} 
+            className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-dolce-rosa/50 focus:border-dolce-rosa transition-all appearance-none"
+          >
             <option value="">Selecione...</option>
             {clientesDB?.filter(c => c.ativo !== false).map(c => (
               <option key={c.id} value={c.id}>{c.nome}</option>
             ))}
           </select>
-          {errors.clienteId && <span className="text-red-500 text-sm">{errors.clienteId.message}</span>}
+          {errors.clienteId && <span className="text-rose-500 text-xs font-medium mt-1 inline-block">{errors.clienteId.message}</span>}
         </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Data de Entrega</label>
-          <input type="datetime-local" {...register('dataEntrega')} className="w-full border rounded p-2" />
-          {errors.dataEntrega && <span className="text-red-500 text-sm">{errors.dataEntrega.message}</span>}
+        <div className="flex-1">
+          <label className="block text-sm font-semibold text-dolce-marrom mb-1.5">Data de Entrega</label>
+          <input 
+            type="datetime-local" 
+            {...register('dataEntrega')} 
+            className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-dolce-rosa/50 focus:border-dolce-rosa transition-all" 
+          />
+          {errors.dataEntrega && <span className="text-rose-500 text-xs font-medium mt-1 inline-block">{errors.dataEntrega.message}</span>}
         </div>
       </div>
 
-      <div className="border-t pt-4">
-        <h4 className="font-semibold mb-4">Itens do Pedido</h4>
-        {fields.map((field, index) => (
-          <div key={field.id} className="flex gap-4 items-end mb-2">
-            <div className="flex-1">
-              <label className="block text-xs font-medium mb-1">Produto</label>
-              <select {...register(`itens.${index}.produtoId`)} onChange={(e) => {
-                register(`itens.${index}.produtoId`).onChange(e)
-                handleProdutoSelect(index, e.target.value)
-              }} className="w-full border rounded p-2 text-sm">
-                <option value="">Selecione...</option>
-                {produtosDB?.filter(p => p.ativo !== false).map(p => (
-                  <option key={p.id} value={p.id}>{p.nome}</option>
-                ))}
-              </select>
+      {/* SEÇÃO 2: ITENS DO PEDIDO */}
+      <div>
+        <h4 className="font-bold text-lg text-dolce-marrom mb-3 flex items-center gap-2">
+          Itens do Pedido
+        </h4>
+        
+        <div className="space-y-4">
+          {fields.map((field, index) => (
+            <div key={field.id} className="relative bg-gray-50 p-4 rounded-xl border border-gray-100 flex flex-col gap-3">
+              <button 
+                type="button" 
+                onClick={() => remove(index)} 
+                className="absolute top-2 right-2 p-2 text-rose-500 bg-white hover:bg-rose-50 rounded-lg shadow-sm border border-rose-100 transition-colors"
+                aria-label="Remover item"
+              >
+                X
+              </button>
+              
+              <div className="pr-10">
+                <label className="block text-xs font-semibold text-dolce-marrom mb-1">Produto</label>
+                <select 
+                  {...register(`itens.${index}.produtoId`)} 
+                  onChange={(e) => {
+                    register(`itens.${index}.produtoId`).onChange(e)
+                    handleProdutoSelect(index, e.target.value)
+                  }} 
+                  className="w-full bg-white border border-gray-200 text-dolce-marrom rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-dolce-rosa/50 focus:border-dolce-rosa transition-all appearance-none"
+                >
+                  <option value="">Selecione um produto...</option>
+                  {produtosDB?.filter(p => p.ativo !== false).map(p => (
+                    <option key={p.id} value={p.id}>{p.nome}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-dolce-marrom mb-1">Qtd</label>
+                  <input 
+                    type="number" 
+                    min="1" 
+                    {...register(`itens.${index}.quantidade`, { valueAsNumber: true })} 
+                    onChange={(e) => {
+                      register(`itens.${index}.quantidade`).onChange(e)
+                      handleQtdChange(index, parseInt(e.target.value) || 1)
+                    }}
+                    className="w-full bg-white border border-gray-200 text-dolce-marrom rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-dolce-rosa/50 focus:border-dolce-rosa transition-all" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-dolce-marrom mb-1">Preço (R$)</label>
+                  <input 
+                    readOnly 
+                    {...register(`itens.${index}.precoUnitarioSnapshot`)} 
+                    className="w-full bg-gray-100 border border-gray-200 rounded-lg p-2.5 text-sm text-gray-500 outline-none" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-emerald-700 mb-1">Subtotal</label>
+                  <input 
+                    readOnly 
+                    {...register(`itens.${index}.valorItem`)} 
+                    className="w-full bg-emerald-50 border border-emerald-100 rounded-lg p-2.5 text-sm text-emerald-800 font-bold outline-none" 
+                  />
+                </div>
+              </div>
             </div>
-            <div className="w-24">
-              <label className="block text-xs font-medium mb-1">Qtd</label>
-              <input type="number" min="1" {...register(`itens.${index}.quantidade`, { valueAsNumber: true })} 
-                onChange={(e) => {
-                  register(`itens.${index}.quantidade`).onChange(e)
-                  handleQtdChange(index, parseInt(e.target.value) || 1)
-                }}
-                className="w-full border rounded p-2 text-sm" />
-            </div>
-            <div className="w-32">
-              <label className="block text-xs font-medium mb-1">Preço Unid. (R$)</label>
-              <input readOnly {...register(`itens.${index}.precoUnitarioSnapshot`)} className="w-full bg-gray-50 border rounded p-2 text-sm text-gray-500" />
-            </div>
-            <div className="w-32">
-              <label className="block text-xs font-medium mb-1">Subtotal (R$)</label>
-              <input readOnly {...register(`itens.${index}.valorItem`)} className="w-full bg-gray-50 border rounded p-2 text-sm text-gray-800 font-bold" />
-            </div>
-            <button type="button" onClick={() => remove(index)} className="p-2 text-red-500 hover:bg-red-50 rounded">X</button>
-          </div>
-        ))}
-        <button type="button" onClick={() => append({ produtoId: '', produtoNome: '', quantidade: 1, precoUnitarioSnapshot: 0, valorItem: 0 })} className="mt-2 text-sm text-blue-600 hover:underline">
+          ))}
+        </div>
+
+        <button 
+          type="button" 
+          onClick={() => append({ produtoId: '', produtoNome: '', quantidade: 1, precoUnitarioSnapshot: 0, valorItem: 0 })} 
+          className="mt-4 w-full md:w-auto py-3 px-4 border-2 border-dashed border-dolce-rosa-claro text-dolce-rosa font-semibold rounded-xl hover:bg-dolce-rosa/5 transition-colors flex justify-center items-center gap-2"
+        >
           + Adicionar Produto
         </button>
-        {errors.itens && <div className="text-red-500 text-sm mt-1">{errors.itens.message}</div>}
+        {errors.itens && <div className="text-rose-500 text-sm mt-2 font-medium">{errors.itens.message}</div>}
       </div>
 
-      <div className="border-t pt-4 bg-gray-50 -mx-6 px-6 pb-6">
-        <div className="flex justify-between items-center mb-6">
-          <h4 className="font-semibold text-lg">Financeiro</h4>
-          <div className="text-right">
-            <div className="text-sm text-gray-500">Valor Total</div>
-            <div className="text-2xl font-bold text-green-700">R$ {valorTotal?.toFixed(2) || '0.00'}</div>
+      {/* SEÇÃO 3: ALERTA DE ESTOQUE */}
+      {faltantes.length > 0 && (
+        <div className="p-5 bg-rose-50 text-rose-800 rounded-2xl border border-rose-200 text-sm animate-in fade-in slide-in-from-bottom-2">
+          <div className="flex items-center gap-2 mb-2">
+            <svg className="w-5 h-5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <strong className="text-base text-rose-900">Atenção: Estoque insuficiente na Cozinha</strong>
+          </div>
+          <p className="mb-2 text-rose-700 font-medium">Faltam os seguintes insumos para produzir este pedido:</p>
+          <ul className="list-disc pl-6 space-y-1 mb-3">
+            {faltantes.map((f, i) => (
+              <li key={i}><span className="font-bold">{f.qtdFalta.toFixed(2)} {f.unidade}</span> de {f.nome}</li>
+            ))}
+          </ul>
+          <p className="text-xs bg-rose-100/50 p-2 rounded-lg text-rose-800 font-medium">
+            Você pode salvar o pedido normalmente, mas precisará registrar a compra destes insumos antes de iniciar a produção (Baixa de Lote).
+          </p>
+        </div>
+      )}
+
+      {/* SEÇÃO 4: FINANCEIRO */}
+      <div className="bg-dolce-rosa-claro/20 p-5 rounded-2xl border border-dolce-rosa-claro/50">
+        <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-2">
+          <h4 className="font-bold text-lg text-dolce-marrom">Financeiro</h4>
+          <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-emerald-100 text-right">
+            <div className="text-xs font-semibold text-dolce-marrom/60 uppercase tracking-wider">Valor Total</div>
+            <div className="text-2xl font-black text-emerald-600">R$ {valorTotal?.toFixed(2) || '0.00'}</div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* SINAL */}
-          <div className="space-y-3">
-            <h5 className="font-medium text-sm text-blue-800 bg-blue-100 p-2 rounded">Pagamento Inicial (Sinal)</h5>
-            <div className="flex gap-2">
+          <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-4">
+            <h5 className="font-bold text-sm text-dolce-marrom flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-500"></span> Pagamento Inicial (Sinal)
+            </h5>
+            <div className="flex gap-3">
               <div className="flex-1">
-                <label className="block text-xs mb-1">Valor (R$)</label>
-                <input type="number" step="0.01" {...register('pagamentos.sinal.valor', { valueAsNumber: true })} className="w-full border rounded p-2 text-sm" />
+                <label className="block text-xs font-semibold text-dolce-marrom/70 mb-1">Valor (R$)</label>
+                <input 
+                  type="number" 
+                  step="0.01" 
+                  {...register('pagamentos.sinal.valor', { valueAsNumber: true })} 
+                  className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none" 
+                />
               </div>
               <div className="flex-1">
-                <label className="block text-xs mb-1">Status</label>
-                <select {...register('pagamentos.sinal.status')} className="w-full border rounded p-2 text-sm">
+                <label className="block text-xs font-semibold text-dolce-marrom/70 mb-1">Status</label>
+                <select 
+                  {...register('pagamentos.sinal.status')} 
+                  className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none appearance-none"
+                >
                   <option value="Pendente">Pendente</option>
                   <option value="Recebido">Recebido</option>
                 </select>
               </div>
             </div>
             <div>
-              <label className="block text-xs mb-1">Forma de Pagamento</label>
-              <select {...register('pagamentos.sinal.forma')} className="w-full border rounded p-2 text-sm">
+              <label className="block text-xs font-semibold text-dolce-marrom/70 mb-1">Forma de Pagamento</label>
+              <select 
+                {...register('pagamentos.sinal.forma')} 
+                className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none appearance-none"
+              >
                 <option value="Pix">Pix</option>
                 <option value="Dinheiro">Dinheiro</option>
                 <option value="Cartão">Cartão</option>
@@ -233,24 +316,38 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
           </div>
 
           {/* RESTANTE */}
-          <div className="space-y-3">
-            <h5 className="font-medium text-sm text-orange-800 bg-orange-100 p-2 rounded">Restante (No ato da Entrega)</h5>
-            <div className="flex gap-2">
+          <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-4">
+            <h5 className="font-bold text-sm text-dolce-marrom flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-orange-500"></span> Restante (Na Entrega)
+            </h5>
+            <div className="flex gap-3">
               <div className="flex-1">
-                <label className="block text-xs mb-1">Valor Restante (R$)</label>
-                <input readOnly type="number" step="0.01" {...register('pagamentos.restante.valor', { valueAsNumber: true })} className="w-full bg-gray-100 border rounded p-2 text-sm text-gray-600 font-bold" />
+                <label className="block text-xs font-semibold text-dolce-marrom/70 mb-1">Valor (R$)</label>
+                <input 
+                  readOnly 
+                  type="number" 
+                  step="0.01" 
+                  {...register('pagamentos.restante.valor', { valueAsNumber: true })} 
+                  className="w-full bg-gray-100 border border-gray-200 text-gray-500 font-bold rounded-lg p-2.5 text-sm outline-none" 
+                />
               </div>
               <div className="flex-1">
-                <label className="block text-xs mb-1">Status</label>
-                <select {...register('pagamentos.restante.status')} className="w-full border rounded p-2 text-sm">
+                <label className="block text-xs font-semibold text-dolce-marrom/70 mb-1">Status</label>
+                <select 
+                  {...register('pagamentos.restante.status')} 
+                  className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all outline-none appearance-none"
+                >
                   <option value="Pendente">Pendente</option>
                   <option value="Recebido">Recebido</option>
                 </select>
               </div>
             </div>
             <div>
-              <label className="block text-xs mb-1">Forma Prevista</label>
-              <select {...register('pagamentos.restante.forma')} className="w-full border rounded p-2 text-sm">
+              <label className="block text-xs font-semibold text-dolce-marrom/70 mb-1">Forma Prevista</label>
+              <select 
+                {...register('pagamentos.restante.forma')} 
+                className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all outline-none appearance-none"
+              >
                 <option value="Pix">Pix</option>
                 <option value="Dinheiro">Dinheiro</option>
                 <option value="Cartão">Cartão</option>
@@ -260,22 +357,21 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
         </div>
       </div>
 
-      {faltantes.length > 0 && (
-        <div className="p-4 bg-yellow-50 text-yellow-800 rounded border border-yellow-300 text-sm">
-          <strong className="text-base">⚠ Estoque insuficiente para produzir este pedido.</strong>
-          <p className="mt-1 mb-2">Faltam:</p>
-          <ul className="list-disc pl-5">
-            {faltantes.map((f, i) => (
-              <li key={i}>{f.qtdFalta.toFixed(2)} {f.unidade} de {f.nome}</li>
-            ))}
-          </ul>
-          <p className="mt-2 text-xs opacity-80">Você pode salvar o pedido, mas precisará comprar estes itens antes de iniciar a produção.</p>
-        </div>
-      )}
-
-      <div className="flex justify-end gap-2 pt-4 border-t">
-        <button type="button" onClick={onCancel} className="px-4 py-2 border rounded hover:bg-gray-50">Cancelar</button>
-        <button type="submit" className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 shadow">Salvar Pedido</button>
+      {/* AÇÕES FINAIS */}
+      <div className="flex flex-col-reverse md:flex-row justify-end gap-3 pt-6 mt-6">
+        <button 
+          type="button" 
+          onClick={onCancel} 
+          className="w-full md:w-auto px-6 py-3 md:py-2.5 font-medium text-dolce-marrom bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+        >
+          Cancelar
+        </button>
+        <button 
+          type="submit" 
+          className="w-full md:w-auto px-6 py-3 md:py-2.5 font-medium text-white bg-dolce-rosa hover:bg-dolce-rosa/90 rounded-xl shadow-[0_4px_14px_rgba(201,107,122,0.3)] transition-all active:scale-[0.98]"
+        >
+          Salvar Pedido
+        </button>
       </div>
     </form>
   )

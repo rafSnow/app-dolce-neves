@@ -87,76 +87,113 @@ export function ProdutoForm({ initialData, onSubmit, onCancel }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit(handleCustomSubmit)} className="space-y-6 bg-white p-6 border rounded-lg shadow-sm">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="col-span-2">
-          <label className="block text-sm font-medium mb-1">Nome do Produto</label>
-          <input {...register('nome')} className="w-full border rounded p-2" placeholder="Ex: Bolo de Cenoura (Fatia)" />
-          {errors.nome && <span className="text-red-500 text-sm">{errors.nome.message}</span>}
+    <form onSubmit={handleSubmit(handleCustomSubmit)} className="space-y-8 pb-4">
+      
+      {/* NOME E RENDIMENTO */}
+      <div className="flex flex-col md:flex-row gap-4 md:gap-5">
+        <div className="flex-[2]">
+          <label className="block text-sm font-semibold text-dolce-marrom mb-1.5">Nome da Receita/Produto</label>
+          <input 
+            {...register('nome')} 
+            className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-dolce-rosa/50 focus:border-dolce-rosa transition-all" 
+            placeholder="Ex: Bolo de Cenoura (Fatia)" 
+          />
+          {errors.nome && <span className="text-rose-500 text-xs font-medium mt-1 inline-block">{errors.nome.message}</span>}
         </div>
         
-        <div>
-          <label className="block text-sm font-medium mb-1">Rendimento (unidades geradas na receita)</label>
-          <input type="number" {...register('rendimentoReceita', { valueAsNumber: true })} className="w-full border rounded p-2" />
+        <div className="flex-1">
+          <label className="block text-sm font-semibold text-dolce-marrom mb-1.5">Rendimento (un.)</label>
+          <input 
+            type="number" 
+            {...register('rendimentoReceita', { valueAsNumber: true })} 
+            className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-dolce-rosa/50 focus:border-dolce-rosa transition-all" 
+          />
         </div>
       </div>
 
-      <div className="border-t pt-4">
-        <h4 className="font-semibold mb-4">Ficha Técnica (Ingredientes)</h4>
-        {fields.map((field, index) => (
-          <div key={field.id} className="flex gap-4 items-end mb-2">
-            <div className="flex-1">
-              <label className="block text-xs font-medium mb-1">Insumo</label>
-              <select 
-                {...register(`insumos.${index}.insumoId`)}
-                onChange={(e) => handleInsumoSelect(index, e.target.value)}
-                className="w-full border rounded p-2 text-sm"
+      {/* FICHA TÉCNICA (INGREDIENTES) */}
+      <div>
+        <h4 className="font-bold text-lg text-dolce-marrom mb-3">Ficha Técnica (Ingredientes)</h4>
+        
+        <div className="space-y-4">
+          {fields.map((field, index) => (
+            <div key={field.id} className="relative bg-gray-50 p-4 rounded-xl border border-gray-100 flex flex-col gap-3">
+              <button 
+                type="button" 
+                onClick={() => remove(index)} 
+                className="absolute top-2 right-2 p-2 text-rose-500 bg-white hover:bg-rose-50 rounded-lg shadow-sm border border-rose-100 transition-colors"
+                aria-label="Remover ingrediente"
               >
-                <option value="">Selecione...</option>
-                {insumosDB?.filter(i => i.ativo).map(i => (
-                  <option key={i.id} value={i.id}>{i.nome}</option>
-                ))}
-              </select>
+                X
+              </button>
+              
+              <div className="pr-10">
+                <label className="block text-xs font-semibold text-dolce-marrom mb-1">Insumo</label>
+                <select 
+                  {...register(`insumos.${index}.insumoId`)}
+                  onChange={(e) => handleInsumoSelect(index, e.target.value)}
+                  className="w-full bg-white border border-gray-200 text-dolce-marrom rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-dolce-rosa/50 focus:border-dolce-rosa transition-all appearance-none"
+                >
+                  <option value="">Selecione...</option>
+                  {insumosDB?.filter(i => i.ativo).map(i => (
+                    <option key={i.id} value={i.id}>{i.nome}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex gap-2">
+                  <div className="flex-[2]">
+                    <label className="block text-xs font-semibold text-dolce-marrom mb-1">Qtd na Receita</label>
+                    <input 
+                      type="number" step="0.01" 
+                      {...register(`insumos.${index}.quantidadeUsadaReceita`, { valueAsNumber: true })}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value)
+                        const insumoRef = insumosDB?.find(i => i.id === watch(`insumos.${index}.insumoId`))
+                        recalcCustoLinha(index, insumoRef, val)
+                      }}
+                      className="w-full bg-white border border-gray-200 text-dolce-marrom rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-dolce-rosa/50 focus:border-dolce-rosa transition-all" 
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-semibold text-dolce-marrom/60 mb-1">Unid.</label>
+                    <input readOnly {...register(`insumos.${index}.unidade`)} className="w-full bg-gray-100 border border-gray-200 text-gray-500 rounded-lg p-2.5 text-sm outline-none" />
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="block text-xs font-semibold text-dolce-marrom/60 mb-1">Por Unid.</label>
+                    <input readOnly value={ ((watch(`insumos.${index}.quantidadeUsadaReceita`) || 0) / (rendimento || 1)).toFixed(2) } className="w-full bg-gray-100 border border-gray-200 text-gray-500 rounded-lg p-2.5 text-sm outline-none" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-semibold text-rose-700 mb-1">Custo</label>
+                    <input readOnly value={watch(`insumos.${index}.custoProporcionalAtual`)?.toFixed(2) || '0.00'} className="w-full bg-rose-50 border border-rose-100 text-rose-800 font-bold rounded-lg p-2.5 text-sm outline-none" />
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="w-24">
-              <label className="block text-xs font-medium mb-1">Qtd</label>
-              <input 
-                type="number" step="0.01" 
-                {...register(`insumos.${index}.quantidadeUsadaReceita`, { valueAsNumber: true })}
-                onChange={(e) => {
-                  const val = parseFloat(e.target.value)
-                  const insumoRef = insumosDB?.find(i => i.id === watch(`insumos.${index}.insumoId`))
-                  recalcCustoLinha(index, insumoRef, val)
-                }}
-                className="w-full border rounded p-2 text-sm" 
-              />
-            </div>
-            <div className="w-24">
-              <label className="block text-xs font-medium mb-1 text-gray-500">Unid.</label>
-              <input readOnly {...register(`insumos.${index}.unidade`)} className="w-full bg-gray-50 border rounded p-2 text-sm text-gray-500" />
-            </div>
-            <div className="w-32">
-              <label className="block text-xs font-medium mb-1 text-gray-500">Consumo/Unid</label>
-              <input readOnly value={ ((watch(`insumos.${index}.quantidadeUsadaReceita`) || 0) / (rendimento || 1)).toFixed(2) } className="w-full bg-gray-50 border rounded p-2 text-sm text-gray-500" />
-            </div>
-            <div className="w-24">
-              <label className="block text-xs font-medium mb-1 text-gray-500">Custo (R$)</label>
-              <input readOnly value={watch(`insumos.${index}.custoProporcionalAtual`)?.toFixed(2) || '0.00'} className="w-full bg-gray-50 border rounded p-2 text-sm text-gray-500" />
-            </div>
-            <button type="button" onClick={() => remove(index)} className="p-2 text-red-500 hover:bg-red-50 rounded">
-              X
-            </button>
-          </div>
-        ))}
-        <div className="flex gap-4 mt-2">
-          <button type="button" onClick={() => append({ insumoId: '', nomeInsumo: '', unidade: '', quantidadeUsadaReceita: 0, custoProporcionalAtual: 0 })} className="text-sm text-blue-600 hover:underline">
+          ))}
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3 mt-4">
+          <button 
+            type="button" 
+            onClick={() => append({ insumoId: '', nomeInsumo: '', unidade: '', quantidadeUsadaReceita: 0, custoProporcionalAtual: 0 })} 
+            className="flex-1 py-3 px-4 border-2 border-dashed border-dolce-rosa-claro text-dolce-rosa font-semibold rounded-xl hover:bg-dolce-rosa/5 transition-colors flex justify-center items-center gap-2"
+          >
             + Adicionar Ingrediente
           </button>
-          <button type="button" onClick={() => setIsGasModalOpen(true)} className="text-sm text-orange-500 hover:underline flex items-center gap-1">
+          <button 
+            type="button" 
+            onClick={() => setIsGasModalOpen(true)} 
+            className="flex-1 py-3 px-4 bg-orange-50 text-orange-600 font-semibold rounded-xl hover:bg-orange-100 transition-colors flex justify-center items-center gap-2"
+          >
             🔥 Adicionar Gás à Receita
           </button>
         </div>
-        {errors.insumos && <div className="text-red-500 text-sm mt-1">{errors.insumos.message}</div>}
+        {errors.insumos && <div className="text-rose-500 text-sm mt-2 font-medium">{errors.insumos.message}</div>}
       </div>
 
       {isGasModalOpen && (
@@ -181,60 +218,97 @@ export function ProdutoForm({ initialData, onSubmit, onCancel }: Props) {
         />
       )}
 
-      <div className="border-t pt-4 bg-gray-50 -mx-6 px-6 pb-6">
-        <h4 className="font-semibold mb-4 pt-4">Precificação</h4>
-        <div className="grid grid-cols-3 gap-4 mb-4">
-          <div className="p-3 bg-white border rounded shadow-sm">
-            <div className="text-xs text-gray-500">Custo da Receita (Total)</div>
-            <div className="text-lg font-bold text-gray-800">R$ {custoTotal.toFixed(2)}</div>
-          </div>
-          <div className="p-3 bg-white border rounded shadow-sm border-blue-200">
-            <div className="text-xs text-blue-600 font-bold">Custo Unitário</div>
-            <div className="text-xl font-bold text-blue-800">R$ {custoUnitario.toFixed(2)}</div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-4 items-end">
-          <div>
-            <label className="block text-sm font-medium mb-1">Lucro Desejado (%)</label>
-            <input type="number" step="0.1" {...register('margemLucro', { valueAsNumber: true })} className="w-full border rounded p-2 border-green-300 bg-green-50" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Taxas/Comissão (%)</label>
-            <input type="number" step="0.1" {...register('comissaoPerc', { valueAsNumber: true })} className="w-full border rounded p-2" />
-          </div>
-          <div className="p-3 bg-white border rounded shadow-sm border-green-200">
-            <div className="text-xs text-green-600 font-bold">Preço de Venda Final (Sugerido)</div>
-            <div className="text-xl font-bold text-green-800">R$ {precoVendaCalculado.toFixed(2)}</div>
-          </div>
-        </div>
+      {/* PRECIFICAÇÃO E DASHBOARD FINANCEIRO */}
+      <div className="bg-emerald-50/50 p-5 rounded-3xl border border-emerald-100">
+        <h4 className="font-bold text-xl text-dolce-marrom mb-5">Precificação Mágica</h4>
         
-        <div className="grid grid-cols-1 mt-2">
-          <div>
-            <div className="p-2">
-              <div className="text-xs text-gray-500 mb-1">Margem Real:</div>
-              <div className={`font-bold ${alerta.isPrejuizo ? 'text-red-600' : alerta.isMargemBaixa ? 'text-orange-500' : 'text-green-600'}`}>
-                {alerta.margemReal.toFixed(1)}% (R$ {alerta.lucroReal.toFixed(2)})
-              </div>
-            </div>
+        {/* Top Indicators */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-rose-100">
+            <div className="text-xs font-bold text-rose-600/70 uppercase tracking-wider mb-1">Custo da Receita Inteira</div>
+            <div className="text-2xl font-black text-rose-600">R$ {custoTotal.toFixed(2)}</div>
+          </div>
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-blue-200 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-blue-50 rounded-bl-full -mr-4 -mt-4 opacity-50"></div>
+            <div className="text-xs font-bold text-blue-600/70 uppercase tracking-wider mb-1">Custo por Unidade</div>
+            <div className="text-2xl font-black text-blue-700 relative z-10">R$ {custoUnitario.toFixed(2)}</div>
           </div>
         </div>
 
+        {/* Form Controls */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <div>
+            <label className="block text-xs font-bold text-emerald-800 mb-1.5 uppercase tracking-wide">Margem de Lucro Desejada (%)</label>
+            <input 
+              type="number" step="0.1" 
+              {...register('margemLucro', { valueAsNumber: true })} 
+              className="w-full bg-white border border-emerald-200 text-emerald-900 font-bold rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all text-lg" 
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-dolce-marrom/60 mb-1.5 uppercase tracking-wide">Taxas / Comissão de Venda (%)</label>
+            <input 
+              type="number" step="0.1" 
+              {...register('comissaoPerc', { valueAsNumber: true })} 
+              className="w-full bg-white border border-gray-200 text-dolce-marrom font-bold rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-gray-500/30 transition-all text-lg" 
+            />
+          </div>
+        </div>
+
+        {/* Final Price Block */}
+        <div className="bg-emerald-600 p-5 rounded-2xl shadow-[0_8px_30px_rgba(5,150,105,0.3)] text-white mb-4 relative overflow-hidden flex flex-col sm:flex-row justify-between items-center sm:items-end gap-3">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
+          <div>
+            <div className="text-emerald-100 font-medium text-sm mb-1">Preço de Venda Sugerido</div>
+            <div className="text-4xl font-black tracking-tight">R$ {precoVendaCalculado.toFixed(2)}</div>
+          </div>
+          <div className="bg-white/20 px-4 py-2 rounded-xl backdrop-blur-md border border-white/10 text-right w-full sm:w-auto">
+            <div className="text-[10px] text-emerald-100 uppercase tracking-widest font-bold mb-0.5">Lucro Limpo (Un.)</div>
+            <div className="text-xl font-bold">R$ {alerta.lucroReal.toFixed(2)} <span className="text-xs font-medium opacity-80">({alerta.margemReal.toFixed(1)}%)</span></div>
+          </div>
+        </div>
+
+        {/* ALERTS */}
         {alerta.isPrejuizo && (
-          <div className="mt-4 p-3 bg-red-100 text-red-800 rounded-md text-sm border border-red-200">
-            <strong>Atenção:</strong> Você está tendo prejuízo neste produto! O preço de venda não cobre os custos da ficha técnica + taxas.
+          <div className="p-4 bg-rose-100 text-rose-800 rounded-xl border border-rose-300 text-sm animate-in fade-in zoom-in-95 flex gap-3 shadow-sm">
+            <svg className="w-6 h-6 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div>
+              <strong className="block text-base mb-1">Atenção: Prejuízo Detectado!</strong>
+              O preço de venda sugerido não cobre os custos da sua Ficha Técnica após o desconto das taxas (Cartão/Comissão). 
+              Aumente a Margem de Lucro imediatamente.
+            </div>
           </div>
         )}
         {!alerta.isPrejuizo && alerta.isMargemBaixa && (
-          <div className="mt-4 p-3 bg-orange-100 text-orange-800 rounded-md text-sm border border-orange-200">
-            <strong>Aviso:</strong> A margem de lucro está abaixo de 20%.
+          <div className="p-4 bg-orange-100 text-orange-800 rounded-xl border border-orange-300 text-sm animate-in fade-in zoom-in-95 flex gap-3 shadow-sm">
+            <svg className="w-6 h-6 text-orange-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <strong className="block text-base mb-1">Aviso: Margem Baixa</strong>
+              Sua margem de lucro real está abaixo de 20%. Isso deixa o negócio vulnerável a pequenas variações nos preços dos ingredientes.
+            </div>
           </div>
         )}
       </div>
 
-      <div className="flex justify-end gap-2 pt-4 border-t">
-        <button type="button" onClick={onCancel} className="px-4 py-2 border rounded hover:bg-gray-50">Cancelar</button>
-        <button type="submit" className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 shadow">Salvar Produto</button>
+      {/* AÇÕES FINAIS */}
+      <div className="flex flex-col-reverse md:flex-row justify-end gap-3 pt-6 mt-6 border-t border-gray-100">
+        <button 
+          type="button" 
+          onClick={onCancel} 
+          className="w-full md:w-auto px-6 py-3 md:py-2.5 font-medium text-dolce-marrom bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+        >
+          Cancelar
+        </button>
+        <button 
+          type="submit" 
+          className="w-full md:w-auto px-8 py-3 md:py-2.5 font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded-xl shadow-[0_4px_14px_rgba(16,185,129,0.4)] transition-all active:scale-[0.98]"
+        >
+          Salvar Ficha Técnica
+        </button>
       </div>
     </form>
   )

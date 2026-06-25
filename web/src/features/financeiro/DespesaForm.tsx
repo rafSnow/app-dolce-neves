@@ -41,22 +41,33 @@ export function DespesaForm({ initialData, onSubmit, onCancel }: Props) {
   const statusAtual = watch('status')
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 bg-white p-4 border rounded shadow-sm">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 pb-4">
       <div>
-        <label className="block text-sm font-medium mb-1">Descrição</label>
-        <input {...register('descricao')} className="w-full border rounded p-2" placeholder="Ex: Compra de Embalagens" />
-        {errors.descricao && <span className="text-red-500 text-sm">{errors.descricao.message}</span>}
+        <label className="block text-sm font-semibold text-dolce-marrom mb-1.5">Descrição</label>
+        <input 
+          {...register('descricao')} 
+          className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-dolce-rosa/50 focus:border-dolce-rosa transition-all" 
+          placeholder="Ex: Compra de Embalagens" 
+        />
+        {errors.descricao && <span className="text-rose-500 text-xs font-medium mt-1 inline-block">{errors.descricao.message}</span>}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
         <div>
-          <label className="block text-sm font-medium mb-1">Valor (R$)</label>
-          <input type="number" step="0.01" {...register('valor', { valueAsNumber: true })} className="w-full border rounded p-2" />
-          {errors.valor && <span className="text-red-500 text-sm">{errors.valor.message}</span>}
+          <label className="block text-sm font-semibold text-dolce-marrom mb-1.5">Valor (R$)</label>
+          <input 
+            type="number" step="0.01" 
+            {...register('valor', { valueAsNumber: true })} 
+            className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-dolce-rosa/50 focus:border-dolce-rosa transition-all" 
+          />
+          {errors.valor && <span className="text-rose-500 text-xs font-medium mt-1 inline-block">{errors.valor.message}</span>}
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Categoria</label>
-          <select {...register('categoria')} className="w-full border rounded p-2">
+          <label className="block text-sm font-semibold text-dolce-marrom mb-1.5">Categoria</label>
+          <select 
+            {...register('categoria')} 
+            className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-dolce-rosa/50 focus:border-dolce-rosa transition-all appearance-none"
+          >
             <option value="Insumos">Insumos (Ingredientes/Embalagens)</option>
             <option value="Investimentos">Investimentos (Equipamentos)</option>
             <option value="Outros">Outros (Luz, Água, Marketing)</option>
@@ -64,31 +75,58 @@ export function DespesaForm({ initialData, onSubmit, onCancel }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 border-t pt-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5 border-t border-gray-100 pt-5 mt-2">
         <div>
-          <label htmlFor="status" className="block text-sm font-medium mb-1">Status</label>
-          <select id="status" {...register('status')} className="w-full border rounded p-2">
+          <label htmlFor="status" className="block text-sm font-semibold text-dolce-marrom mb-1.5">Status da Conta</label>
+          <select 
+            id="status" 
+            {...register('status')} 
+            className={`w-full border rounded-xl p-3 focus:outline-none focus:ring-2 transition-all font-semibold appearance-none
+              ${statusAtual === 'Pago' 
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800 focus:ring-emerald-500/50' 
+                : 'bg-amber-50 border-amber-200 text-amber-800 focus:ring-amber-500/50'
+              }`}
+          >
             <option value="Pendente">A Pagar (Pendente)</option>
             <option value="Pago">Pago</option>
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Vencimento Previsto</label>
-          <input type="date" {...register('dataVencimento')} className="w-full border rounded p-2" />
-          {errors.dataVencimento && <span className="text-red-500 text-sm">{errors.dataVencimento.message}</span>}
+          <label className="block text-sm font-semibold text-dolce-marrom mb-1.5">Vencimento Previsto</label>
+          <input 
+            type="date" 
+            {...register('dataVencimento')} 
+            className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-dolce-rosa/50 transition-all" 
+          />
+          {errors.dataVencimento && <span className="text-rose-500 text-xs font-medium mt-1 inline-block">{errors.dataVencimento.message}</span>}
         </div>
       </div>
 
       {statusAtual === 'Pago' && (
-        <div>
-          <label className="block text-sm font-medium mb-1 text-green-700">Data do Pagamento Efetivado</label>
-          <input type="date" {...register('dataPagamento')} className="w-full border rounded p-2 bg-green-50 border-green-200" />
+        <div className="animate-in fade-in zoom-in-95 duration-200">
+          <label className="block text-sm font-bold text-emerald-700 mb-1.5">Data do Pagamento Efetivado</label>
+          <input 
+            type="date" 
+            {...register('dataPagamento')} 
+            className="w-full bg-emerald-50 border border-emerald-300 text-emerald-900 font-semibold rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all" 
+          />
         </div>
       )}
 
-      <div className="flex justify-end gap-2 pt-4 border-t mt-4">
-        <button type="button" onClick={onCancel} className="px-4 py-2 border rounded hover:bg-gray-50">Cancelar</button>
-        <button type="submit" className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90">Salvar Despesa</button>
+      <div className="flex flex-col-reverse md:flex-row justify-end gap-3 pt-6 mt-6 border-t border-gray-100">
+        <button 
+          type="button" 
+          onClick={onCancel} 
+          className="w-full md:w-auto px-6 py-3 md:py-2.5 font-medium text-dolce-marrom bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+        >
+          Cancelar
+        </button>
+        <button 
+          type="submit" 
+          className="w-full md:w-auto px-8 py-3 md:py-2.5 font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-[0_4px_14px_rgba(225,29,72,0.4)] transition-all active:scale-[0.98]"
+        >
+          Salvar Despesa
+        </button>
       </div>
     </form>
   )
