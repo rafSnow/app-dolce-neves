@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useFirestoreMutation } from '@/hooks/useFirestore'
 import { useProdutosDinamicos } from '@/hooks/useProdutosDinamicos'
 import { ProdutoForm, ProdutoFormData } from './ProdutoForm'
-import { Plus, Pencil, Trash2, BookOpen, Calculator, X, CakeSlice } from 'lucide-react'
+import { Plus, Pencil, Trash2, BookOpen, Calculator, X, CakeSlice, Search } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 
 export function ProdutosPage() {
@@ -11,6 +11,7 @@ export function ProdutosPage() {
   
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingProduto, setEditingProduto] = useState<(ProdutoFormData & {id: string}) | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
 
   const handleOpenNew = () => {
     setEditingProduto(null)
@@ -25,6 +26,15 @@ export function ProdutosPage() {
     }
     setIsFormOpen(false)
   }
+
+  const filteredProdutos = useMemo(() => {
+    if (!produtos) return []
+    return produtos
+      .filter(p => p.ativo !== false)
+      .filter(p => 
+        p.nome.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+  }, [produtos, searchTerm])
 
   if (isLoading) return <div className="flex justify-center p-8 text-dolce-marrom/50">Carregando Fichas Técnicas...</div>
 
@@ -50,6 +60,20 @@ export function ProdutosPage() {
           <Plus className="w-5 h-5" />
           Novo Produto
         </button>
+      </div>
+
+      {/* BARRA DE BUSCA */}
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <Search className="h-5 w-5 text-dolce-marrom/40" />
+        </div>
+        <input
+          type="text"
+          className="block w-full pl-11 pr-4 py-3 bg-white/70 border border-gray-200 rounded-2xl text-dolce-marrom placeholder-dolce-marrom/40 focus:outline-none focus:ring-2 focus:ring-dolce-rosa focus:border-transparent transition-all shadow-sm font-medium"
+          placeholder="Buscar por nome do produto..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
       </div>
 
       {/* MODAL / BOTTOM SHEET DO FORMULÁRIO */}
@@ -91,7 +115,7 @@ export function ProdutosPage() {
 
       {/* LISTAGEM (CARDS MOBILE / GRID DESKTOP) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-20 md:pb-0">
-        {produtos?.filter(p => p.ativo !== false).map(produto => (
+        {filteredProdutos.map(produto => (
           <div key={produto.id} className="bg-white rounded-2xl shadow-sm border border-dolce-rosa-claro/50 flex flex-col overflow-hidden hover:shadow-md transition-shadow">
             
             {/* Card Header */}
@@ -143,7 +167,7 @@ export function ProdutosPage() {
           </div>
         ))}
         
-        {produtos?.length === 0 && (
+        {produtos?.length === 0 && !searchTerm && (
           <div className="col-span-full flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-dashed border-dolce-rosa-claro text-dolce-marrom/50">
             <BookOpen className="w-16 h-16 mb-4 opacity-30 text-dolce-rosa" />
             <h3 className="text-lg font-bold mb-1 text-dolce-marrom">Nenhuma Ficha Técnica</h3>
@@ -157,6 +181,14 @@ export function ProdutosPage() {
               <Plus className="w-5 h-5" />
               Novo Produto
             </button>
+          </div>
+        )}
+
+        {produtos?.length !== 0 && filteredProdutos.length === 0 && (
+          <div className="col-span-full flex flex-col items-center justify-center py-16 text-dolce-marrom/50">
+            <Search className="w-16 h-16 mb-4 opacity-30" />
+            <h3 className="text-lg font-bold mb-1">Nenhum resultado</h3>
+            <p className="text-sm font-medium text-center px-4">Não encontramos produtos para "{searchTerm}".</p>
           </div>
         )}
       </div>

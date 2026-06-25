@@ -1,13 +1,13 @@
 import { z } from 'zod'
-import { useForm, useFieldArray } from 'react-hook-form'
+import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useFirestoreCollection } from '@/hooks/useFirestore'
+import { PlusCircle, Flame, Droplet, PackagePlus } from 'lucide-react'
 import { useCalculadoraPrecificacao } from './useCalculadoraPrecificacao'
 import type { InsumoFormData } from '../insumos/InsumoForm'
 import { GasCalculatorModal } from './components/GasCalculatorModal'
-import { useState } from 'react'
-
+import { SearchableSelect } from '@/components/ui/SearchableSelect'
 const produtoSchema = z.object({
   nome: z.string().min(1, 'Nome é obrigatório'),
   rendimentoReceita: z.number().min(1, 'Mínimo de 1'),
@@ -129,16 +129,22 @@ export function ProdutoForm({ initialData, onSubmit, onCancel }: Props) {
               
               <div className="pr-10">
                 <label className="block text-xs font-semibold text-dolce-marrom mb-1">Insumo</label>
-                <select 
-                  {...register(`insumos.${index}.insumoId`)}
-                  onChange={(e) => handleInsumoSelect(index, e.target.value)}
-                  className="w-full bg-white border border-gray-200 text-dolce-marrom rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-dolce-rosa/50 focus:border-dolce-rosa transition-all appearance-none"
-                >
-                  <option value="">Selecione...</option>
-                  {insumosDB?.filter(i => i.ativo).map(i => (
-                    <option key={i.id} value={i.id}>{i.nome}</option>
-                  ))}
-                </select>
+                <Controller
+                  name={`insumos.${index}.insumoId`}
+                  control={control}
+                  render={({ field }) => (
+                    <SearchableSelect
+                      options={(insumosDB || []).filter(i => i.ativo).map(i => ({ value: i.id, label: i.nome }))}
+                      value={field.value}
+                      onChange={(val) => {
+                        field.onChange(val)
+                        handleInsumoSelect(index, val)
+                      }}
+                      placeholder="Selecione..."
+                      error={!!errors.insumos?.[index]?.insumoId}
+                    />
+                  )}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">

@@ -13,6 +13,17 @@
   --color-dolce-creme: #F7F0E8;
   --color-dolce-marrom: #3D2314;
   --color-dolce-rosa-claro: #FAE8EC;
+
+  --animate-gradient-flow: gradient-flow 5s ease infinite alternate;
+
+  @keyframes gradient-flow {
+    0% {
+      background-position: 0% 50%;
+    }
+    100% {
+      background-position: 100% 50%;
+    }
+  }
 }
 
 @layer base {

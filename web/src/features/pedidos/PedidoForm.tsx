@@ -1,9 +1,10 @@
 import { z } from 'zod'
-import { useForm, useFieldArray } from 'react-hook-form'
+import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useMemo } from 'react'
 import { useFirestoreCollection } from '@/hooks/useFirestore'
 import { useProdutosDinamicos } from '@/hooks/useProdutosDinamicos'
+import { SearchableSelect } from '@/components/ui/SearchableSelect'
 
 const pagamentoSchema = z.object({
   valor: z.number().min(0),
@@ -138,19 +139,22 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
       <div className="flex flex-col md:flex-row gap-4 md:gap-5">
         <div className="flex-1">
           <label className="block text-sm font-semibold text-dolce-marrom mb-1.5">Cliente</label>
-          <select 
-            {...register('clienteId')} 
-            onChange={(e) => {
-              register('clienteId').onChange(e)
-              handleClienteSelect(e.target.value)
-            }} 
-            className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-dolce-rosa/50 focus:border-dolce-rosa transition-all appearance-none"
-          >
-            <option value="">Selecione...</option>
-            {clientesDB?.filter(c => c.ativo !== false).map(c => (
-              <option key={c.id} value={c.id}>{c.nome}</option>
-            ))}
-          </select>
+          <Controller
+            name="clienteId"
+            control={control}
+            render={({ field }) => (
+              <SearchableSelect
+                options={(clientesDB || []).filter(c => c.ativo !== false).map(c => ({ value: c.id, label: c.nome }))}
+                value={field.value}
+                onChange={(val) => {
+                  field.onChange(val)
+                  handleClienteSelect(val)
+                }}
+                placeholder="Selecione..."
+                error={!!errors.clienteId}
+              />
+            )}
+          />
           {errors.clienteId && <span className="text-rose-500 text-xs font-medium mt-1 inline-block">{errors.clienteId.message}</span>}
         </div>
         <div className="flex-1">
@@ -184,19 +188,22 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
               
               <div className="pr-10">
                 <label className="block text-xs font-semibold text-dolce-marrom mb-1">Produto</label>
-                <select 
-                  {...register(`itens.${index}.produtoId`)} 
-                  onChange={(e) => {
-                    register(`itens.${index}.produtoId`).onChange(e)
-                    handleProdutoSelect(index, e.target.value)
-                  }} 
-                  className="w-full bg-white border border-gray-200 text-dolce-marrom rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-dolce-rosa/50 focus:border-dolce-rosa transition-all appearance-none"
-                >
-                  <option value="">Selecione um produto...</option>
-                  {produtosDB?.filter(p => p.ativo !== false).map(p => (
-                    <option key={p.id} value={p.id}>{p.nome}</option>
-                  ))}
-                </select>
+                <Controller
+                  name={`itens.${index}.produtoId`}
+                  control={control}
+                  render={({ field }) => (
+                    <SearchableSelect
+                      options={(produtosDB || []).filter(p => p.ativo !== false).map(p => ({ value: p.id, label: p.nome }))}
+                      value={field.value}
+                      onChange={(val) => {
+                        field.onChange(val)
+                        handleProdutoSelect(index, val)
+                      }}
+                      placeholder="Selecione um produto..."
+                      error={!!errors.itens?.[index]?.produtoId}
+                    />
+                  )}
+                />
               </div>
 
               <div className="grid grid-cols-3 gap-3">

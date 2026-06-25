@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useFirestoreCollection, useFirestoreMutation } from '@/hooks/useFirestore'
 import { InsumoForm, InsumoFormData } from './InsumoForm'
 import { RegistrarCompraModal } from './RegistrarCompraModal'
-import { Pencil, Trash2, Plus, ShoppingCart, AlertCircle, PackageOpen, X } from 'lucide-react'
+import { Pencil, Trash2, Plus, ShoppingCart, AlertCircle, PackageOpen, X, Search } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 
 export function InsumosPage() {
@@ -12,6 +12,7 @@ export function InsumosPage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingInsumo, setEditingInsumo] = useState<(InsumoFormData & {id: string}) | null>(null)
   const [buyingInsumo, setBuyingInsumo] = useState<any>(null)
+  const [searchTerm, setSearchTerm] = useState('')
 
   const handleOpenNew = () => {
     setEditingInsumo(null)
@@ -26,6 +27,16 @@ export function InsumosPage() {
     }
     setIsFormOpen(false)
   }
+
+  const filteredInsumos = useMemo(() => {
+    if (!insumos) return []
+    return insumos
+      .filter(i => i.ativo !== false)
+      .filter(i => 
+        i.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        i.categoria.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+  }, [insumos, searchTerm])
 
   if (isLoading) return <div className="flex justify-center p-8 text-dolce-marrom/50">Carregando insumos...</div>
 
@@ -43,6 +54,20 @@ export function InsumosPage() {
           <Plus className="w-5 h-5" />
           Novo Insumo
         </button>
+      </div>
+
+      {/* BARRA DE BUSCA */}
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <Search className="h-5 w-5 text-dolce-marrom/40" />
+        </div>
+        <input
+          type="text"
+          className="block w-full pl-11 pr-4 py-3 bg-white/70 border border-gray-200 rounded-2xl text-dolce-marrom placeholder-dolce-marrom/40 focus:outline-none focus:ring-2 focus:ring-dolce-rosa focus:border-transparent transition-all shadow-sm font-medium"
+          placeholder="Buscar por nome ou categoria..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
       </div>
 
       {/* FORMULÁRIO MODAL / BOTTOM SHEET */}
@@ -89,7 +114,7 @@ export function InsumosPage() {
 
       {/* LISTAGEM (CARDS MOBILE / GRID DESKTOP) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-20 md:pb-0">
-        {insumos?.filter(i => i.ativo !== false).map(insumo => {
+        {filteredInsumos.map(insumo => {
           const isCritical = insumo.quantidadeDisponivel <= insumo.quantidadeMinima;
           const custoUnidade = insumo.precoCompra / insumo.pesoVolumeTotal;
 
@@ -166,12 +191,11 @@ export function InsumosPage() {
           );
         })}
         
-        {insumos?.length === 0 && (
+        {insumos?.length === 0 && !searchTerm && (
           <div className="col-span-full flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-dashed border-dolce-rosa-claro text-dolce-marrom/50">
             <PackageOpen className="w-16 h-16 mb-4 opacity-30" />
             <h3 className="text-lg font-bold mb-1">Nenhum insumo encontrado</h3>
             <p className="text-sm font-medium text-center px-4">Cadastre seu primeiro insumo clicando no botão abaixo ou no botão (+).</p>
-            {/* Call to action center para telas muito vazias */}
             <button 
               onClick={handleOpenNew} 
               className="mt-6 flex items-center gap-2 bg-dolce-rosa text-white font-medium px-5 py-2.5 rounded-xl shadow-sm transition-colors"
@@ -179,6 +203,14 @@ export function InsumosPage() {
               <Plus className="w-5 h-5" />
               Novo Insumo
             </button>
+          </div>
+        )}
+
+        {insumos?.length !== 0 && filteredInsumos.length === 0 && (
+          <div className="col-span-full flex flex-col items-center justify-center py-16 text-dolce-marrom/50">
+            <Search className="w-16 h-16 mb-4 opacity-30" />
+            <h3 className="text-lg font-bold mb-1">Nenhum resultado</h3>
+            <p className="text-sm font-medium text-center px-4">Não encontramos insumos para "{searchTerm}".</p>
           </div>
         )}
       </div>

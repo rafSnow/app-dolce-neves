@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useFirestoreCollection, useFirestoreMutation } from '@/hooks/useFirestore'
 import { DespesaForm, DespesaFormData } from './DespesaForm'
-import { Plus, X, Receipt, Calendar, CheckCircle2, AlertCircle, Pencil, Trash2 } from 'lucide-react'
+import { Plus, X, Receipt, Calendar, CheckCircle2, AlertCircle, Pencil, Trash2, Search } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 
 export function DespesasPage() {
@@ -10,6 +10,7 @@ export function DespesasPage() {
   
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingDespesa, setEditingDespesa] = useState<(DespesaFormData & {id: string}) | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
 
   const handleOpenNew = () => {
     setEditingDespesa(null)
@@ -37,13 +38,22 @@ export function DespesasPage() {
     return venc < hoje
   }
 
-  if (isLoading) return <div className="flex justify-center p-8 text-dolce-marrom/50">Carregando Despesas...</div>
+  // Ordenar e Filtrar: Vencidas primeiro, depois pendentes por data (mais próximas), depois pagas.
+  const sortedAndFilteredDespesas = useMemo(() => {
+    if (!despesas) return []
+    return [...despesas]
+      .filter(d => d.ativo !== false)
+      .filter(d => 
+        d.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        d.categoria.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .sort((a, b) => {
+        if (a.status !== b.status) return a.status === 'Pendente' ? -1 : 1
+        return new Date(a.dataVencimento).getTime() - new Date(b.dataVencimento).getTime()
+      })
+  }, [despesas, searchTerm])
 
-  // Ordenar: Vencidas primeiro, depois pendentes por data (mais próximas), depois pagas.
-  const sortedDespesas = despesas ? [...despesas].filter(d => d.ativo !== false).sort((a, b) => {
-    if (a.status !== b.status) return a.status === 'Pendente' ? -1 : 1
-    return new Date(a.dataVencimento).getTime() - new Date(b.dataVencimento).getTime()
-  }) : []
+  if (isLoading) return <div className="flex justify-center p-8 text-dolce-marrom/50">Carregando Despesas...</div>
 
   return (
     <div className="flex flex-col gap-6 w-full relative min-h-full">
@@ -66,6 +76,20 @@ export function DespesasPage() {
           <Plus className="w-5 h-5" />
           Nova Despesa
         </button>
+      </div>
+
+      {/* BARRA DE BUSCA */}
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <Search className="h-5 w-5 text-dolce-marrom/40" />
+        </div>
+        <input
+          type="text"
+          className="block w-full pl-11 pr-4 py-3 bg-white/70 border border-gray-200 rounded-2xl text-dolce-marrom placeholder-dolce-marrom/40 focus:outline-none focus:ring-2 focus:ring-dolce-rosa focus:border-transparent transition-all shadow-sm font-medium"
+          placeholder="Buscar por descrição ou categoria..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
       </div>
 
       {/* MODAL / BOTTOM SHEET DO FORMULÁRIO */}
@@ -107,7 +131,7 @@ export function DespesasPage() {
 
       {/* LISTAGEM (CARDS MOBILE / GRID DESKTOP) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-20 md:pb-0">
-        {sortedDespesas.map(despesa => {
+        {sortedAndFilteredDespesas.map(despesa => {
           const vencido = isOverdue(despesa.dataVencimento, despesa.status)
           
           return (
@@ -186,7 +210,7 @@ export function DespesasPage() {
           )
         })}
         
-        {sortedDespesas.length === 0 && (
+        {despesas?.length === 0 && !searchTerm && (
           <div className="col-span-full flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-dashed border-dolce-rosa-claro text-dolce-marrom/50">
             <Receipt className="w-16 h-16 mb-4 opacity-30 text-dolce-rosa" />
             <h3 className="text-lg font-bold mb-1 text-dolce-marrom">Nenhuma Despesa</h3>
@@ -200,6 +224,14 @@ export function DespesasPage() {
               <Plus className="w-5 h-5" />
               Nova Despesa
             </button>
+          </div>
+        )}
+
+        {despesas?.length !== 0 && sortedAndFilteredDespesas.length === 0 && (
+          <div className="col-span-full flex flex-col items-center justify-center py-16 text-dolce-marrom/50">
+            <Search className="w-16 h-16 mb-4 opacity-30" />
+            <h3 className="text-lg font-bold mb-1">Nenhum resultado</h3>
+            <p className="text-sm font-medium text-center px-4">Não encontramos despesas para "{searchTerm}".</p>
           </div>
         )}
       </div>

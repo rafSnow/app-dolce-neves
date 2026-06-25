@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useFirestoreCollection, useFirestoreMutation } from '@/hooks/useFirestore'
 import { ClienteForm, ClienteFormData } from './ClienteForm'
-import { Plus, Users, X, MessageCircle, Pencil, Trash2, Calendar } from 'lucide-react'
+import { Plus, Users, X, MessageCircle, Pencil, Trash2, Calendar, Search } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 
 export function ClientesPage() {
@@ -10,6 +10,7 @@ export function ClientesPage() {
   
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingCliente, setEditingCliente] = useState<(ClienteFormData & {id: string}) | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
 
   const handleOpenNew = () => {
     setEditingCliente(null)
@@ -32,6 +33,16 @@ export function ClientesPage() {
     // Assume Brazil code (55) if not provided implicitly
     return `https://wa.me/55${numbersOnly}`
   }
+
+  const filteredClientes = useMemo(() => {
+    if (!clientes) return []
+    return clientes
+      .filter(c => c.ativo !== false)
+      .filter(c => 
+        c.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (c.contato && c.contato.includes(searchTerm))
+      )
+  }, [clientes, searchTerm])
 
   if (isLoading) return <div className="flex justify-center p-8 text-dolce-marrom/50">Carregando Clientes...</div>
 
@@ -57,6 +68,20 @@ export function ClientesPage() {
           <Plus className="w-5 h-5" />
           Novo Cliente
         </button>
+      </div>
+
+      {/* BARRA DE BUSCA */}
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <Search className="h-5 w-5 text-dolce-marrom/40" />
+        </div>
+        <input
+          type="text"
+          className="block w-full pl-11 pr-4 py-3 bg-white/70 border border-gray-200 rounded-2xl text-dolce-marrom placeholder-dolce-marrom/40 focus:outline-none focus:ring-2 focus:ring-dolce-rosa focus:border-transparent transition-all shadow-sm font-medium"
+          placeholder="Buscar por nome ou telefone..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
       </div>
 
       {/* MODAL / BOTTOM SHEET DO FORMULÁRIO */}
@@ -98,7 +123,7 @@ export function ClientesPage() {
 
       {/* LISTAGEM (CARDS MOBILE / GRID DESKTOP) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-20 md:pb-0">
-        {clientes?.filter(c => c.ativo !== false).map(cliente => (
+        {filteredClientes.map(cliente => (
           <div key={cliente.id} className="bg-white rounded-2xl shadow-sm border border-dolce-rosa-claro/50 flex flex-col overflow-hidden hover:shadow-md transition-shadow">
             
             <div className="p-5 flex flex-col gap-1">
@@ -157,7 +182,7 @@ export function ClientesPage() {
           </div>
         ))}
         
-        {clientes?.length === 0 && (
+        {clientes?.length === 0 && !searchTerm && (
           <div className="col-span-full flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-dashed border-dolce-rosa-claro text-dolce-marrom/50">
             <Users className="w-16 h-16 mb-4 opacity-30 text-dolce-rosa" />
             <h3 className="text-lg font-bold mb-1 text-dolce-marrom">Nenhum Cliente</h3>
@@ -171,6 +196,14 @@ export function ClientesPage() {
               <Plus className="w-5 h-5" />
               Novo Cliente
             </button>
+          </div>
+        )}
+
+        {clientes?.length !== 0 && filteredClientes.length === 0 && (
+          <div className="col-span-full flex flex-col items-center justify-center py-16 text-dolce-marrom/50">
+            <Search className="w-16 h-16 mb-4 opacity-30" />
+            <h3 className="text-lg font-bold mb-1">Nenhum resultado</h3>
+            <p className="text-sm font-medium text-center px-4">Não encontramos clientes com "{searchTerm}".</p>
           </div>
         )}
       </div>

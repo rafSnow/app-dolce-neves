@@ -1,6 +1,7 @@
+import { useState, useMemo } from 'react'
 import { useFirestoreCollection, useFirestoreMutation } from '@/hooks/useFirestore'
 import { useBaixaEstoque } from '../pedidos/useBaixaEstoque'
-import { ChefHat, CheckCircle, Clock, Flame, Info, CheckSquare, PackageOpen, Calendar } from 'lucide-react'
+import { ChefHat, CheckCircle, Clock, Flame, Info, CheckSquare, PackageOpen, Calendar, Search } from 'lucide-react'
 
 export function ProducaoPage() {
   const { data: lotes, isLoading } = useFirestoreCollection<any>('producao')
@@ -8,6 +9,7 @@ export function ProducaoPage() {
   const { update: updatePedido } = useFirestoreMutation<any>('pedidos')
   
   const { executarBaixaLote } = useBaixaEstoque()
+  const [searchTerm, setSearchTerm] = useState('')
 
   const handleConcluir = async (lote: any) => {
     try {
@@ -28,27 +30,50 @@ export function ProducaoPage() {
     }
   }
 
+  const filteredLotes = useMemo(() => {
+    if (!lotes) return []
+    return lotes
+      .filter(l => l.ativo !== false)
+      .filter(l => l.clienteNome.toLowerCase().includes(searchTerm.toLowerCase()))
+  }, [lotes, searchTerm])
+
   if (isLoading) return <div className="flex justify-center p-8 text-dolce-marrom/50">Carregando Cozinha...</div>
 
-  const pendentes = lotes?.filter(l => l.ativo !== false && l.status === 'Pendente') || []
-  const concluidos = lotes?.filter(l => l.ativo !== false && l.status === 'Concluído') || []
+  const pendentes = filteredLotes.filter(l => l.status === 'Pendente')
+  const concluidos = filteredLotes.filter(l => l.status === 'Concluído')
 
   return (
     <div className="flex flex-col gap-6 w-full pb-20 md:pb-0">
       
       {/* HEADER */}
-      <div className="flex items-center gap-3">
-        <div className="bg-orange-100 p-3 rounded-2xl">
-          <ChefHat className="w-8 h-8 text-orange-600" />
-        </div>
-        <div>
-          <h2 className="text-2xl md:text-3xl font-bold text-dolce-marrom tracking-tight">Cozinha / Produção</h2>
-          <p className="text-sm text-dolce-marrom/60 mt-1">Ordens de preparo geradas automaticamente pelas vendas.</p>
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <div className="bg-orange-100 p-3 rounded-2xl hidden sm:block">
+            <ChefHat className="w-8 h-8 text-orange-600" />
+          </div>
+          <div>
+            <h2 className="text-2xl md:text-3xl font-bold text-dolce-marrom tracking-tight">Cozinha / Produção</h2>
+            <p className="text-sm text-dolce-marrom/60 mt-1">Ordens de preparo geradas automaticamente pelas vendas.</p>
+          </div>
         </div>
       </div>
 
+      {/* BARRA DE BUSCA */}
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <Search className="h-5 w-5 text-dolce-marrom/40" />
+        </div>
+        <input
+          type="text"
+          className="block w-full pl-11 pr-4 py-3 bg-white/70 border border-orange-200/60 rounded-2xl text-dolce-marrom placeholder-dolce-marrom/40 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all shadow-sm font-medium"
+          placeholder="Buscar ordem de produção pelo nome do cliente..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
       {/* A PRODUZIR */}
-      <div className="mt-4">
+      <div className="mt-2">
         <h3 className="font-bold text-xl text-dolce-marrom mb-4 flex items-center gap-2">
           <Flame className="w-5 h-5 text-orange-500" /> A Produzir ({pendentes.length})
         </h3>
@@ -118,10 +143,17 @@ export function ProducaoPage() {
             </div>
           ))}
           
-          {pendentes.length === 0 && (
+          {lotes?.filter(l => l.ativo !== false && l.status === 'Pendente').length === 0 && !searchTerm && (
             <div className="col-span-full flex flex-col items-center justify-center py-12 bg-white rounded-2xl border border-dashed border-gray-300 text-dolce-marrom/40">
               <ChefHat className="w-12 h-12 mb-3 opacity-20" />
               <p className="text-sm font-medium">Nenhuma ordem de produção pendente.</p>
+            </div>
+          )}
+
+          {lotes?.filter(l => l.ativo !== false && l.status === 'Pendente').length !== 0 && pendentes.length === 0 && (
+            <div className="col-span-full flex flex-col items-center justify-center py-12 bg-white rounded-2xl border border-dashed border-gray-300 text-dolce-marrom/40">
+              <Search className="w-12 h-12 mb-3 opacity-20" />
+              <p className="text-sm font-medium">Nenhuma ordem de produção pendente encontrada para "{searchTerm}".</p>
             </div>
           )}
         </div>
@@ -146,6 +178,11 @@ export function ProducaoPage() {
               </p>
             </div>
           ))}
+          {concluidos.length === 0 && searchTerm && (
+            <div className="col-span-full flex justify-center py-6">
+              <p className="text-sm font-medium text-dolce-marrom/40">Nenhum concluído encontrado para "{searchTerm}".</p>
+            </div>
+          )}
         </div>
       </div>
 

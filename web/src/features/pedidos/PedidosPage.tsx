@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useFirestoreCollection, useFirestoreMutation } from '@/hooks/useFirestore'
 import { PedidoForm, PedidoFormData } from './PedidoForm'
 import { useBaixaEstoque, ItemBaixaEstoque } from './useBaixaEstoque'
-import { Pencil, Trash2, Plus, ShoppingBag, Calendar, DollarSign, X, CheckCircle, Clock, PackageOpen } from 'lucide-react'
+import { Pencil, Trash2, Plus, ShoppingBag, Calendar, DollarSign, X, CheckCircle, Clock, PackageOpen, Search } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 
 export function PedidosPage() {
@@ -17,6 +17,7 @@ export function PedidosPage() {
 
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingPedido, setEditingPedido] = useState<(PedidoFormData & {id: string}) | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
 
   const handleOpenNew = () => {
     setEditingPedido(null)
@@ -84,6 +85,16 @@ export function PedidosPage() {
     }
   }
 
+  const filteredPedidos = useMemo(() => {
+    if (!pedidos) return []
+    return pedidos
+      .filter(p => p.ativo !== false)
+      .filter(p => 
+        p.clienteNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.pagamentos.sinal.status.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+  }, [pedidos, searchTerm])
+
   if (isLoading) return <div className="flex justify-center p-8 text-dolce-marrom/50">Carregando Pedidos...</div>
 
   return (
@@ -103,6 +114,20 @@ export function PedidosPage() {
           <Plus className="w-5 h-5" />
           Novo Pedido
         </button>
+      </div>
+
+      {/* BARRA DE BUSCA */}
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <Search className="h-5 w-5 text-dolce-marrom/40" />
+        </div>
+        <input
+          type="text"
+          className="block w-full pl-11 pr-4 py-3 bg-white/70 border border-gray-200 rounded-2xl text-dolce-marrom placeholder-dolce-marrom/40 focus:outline-none focus:ring-2 focus:ring-dolce-rosa focus:border-transparent transition-all shadow-sm font-medium"
+          placeholder="Buscar por nome do cliente ou status..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
       </div>
 
       {/* MODAL / BOTTOM SHEET DO FORMULÁRIO */}
@@ -143,7 +168,7 @@ export function PedidosPage() {
 
       {/* LISTAGEM (CARDS MOBILE / GRID DESKTOP) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-20 md:pb-0">
-        {pedidos?.filter(p => p.ativo !== false).map(pedido => {
+        {filteredPedidos.map(pedido => {
           const sinalStatus = pedido.pagamentos.sinal.status;
           
           return (
@@ -217,7 +242,7 @@ export function PedidosPage() {
           );
         })}
         
-        {pedidos?.length === 0 && (
+        {pedidos?.length === 0 && !searchTerm && (
           <div className="col-span-full flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-dashed border-dolce-rosa-claro text-dolce-marrom/50">
             <ShoppingBag className="w-16 h-16 mb-4 opacity-30" />
             <h3 className="text-lg font-bold mb-1">Nenhum pedido encontrado</h3>
@@ -229,6 +254,14 @@ export function PedidosPage() {
               <Plus className="w-5 h-5" />
               Novo Pedido
             </button>
+          </div>
+        )}
+
+        {pedidos?.length !== 0 && filteredPedidos.length === 0 && (
+          <div className="col-span-full flex flex-col items-center justify-center py-16 text-dolce-marrom/50">
+            <Search className="w-16 h-16 mb-4 opacity-30" />
+            <h3 className="text-lg font-bold mb-1">Nenhum resultado</h3>
+            <p className="text-sm font-medium text-center px-4">Não encontramos pedidos para "{searchTerm}".</p>
           </div>
         )}
       </div>

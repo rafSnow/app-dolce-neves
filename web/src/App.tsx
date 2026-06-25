@@ -10,8 +10,21 @@ import { ConfiguracoesPage } from './features/configuracoes/ConfiguracoesPage'
 import { DashboardPage } from './features/dashboard/DashboardPage'
 import { DespesasPage } from './features/financeiro/DespesasPage'
 import { ProducaoPage } from './features/producao/ProducaoPage'
+import { useFirestoreCollection } from './hooks/useFirestore'
+import { useEffect } from 'react'
 
 function App() {
+  const { data: configs } = useFirestoreCollection<any>('configuracoes')
+
+  useEffect(() => {
+    const configDoc = configs?.find((c: any) => c.id === 'global') || configs?.[0]
+    if (configDoc?.nomeNegocio) {
+      document.title = configDoc.nomeNegocio
+    } else {
+      document.title = 'Dolce Neves'
+    }
+  }, [configs])
+
   return (
     <HashRouter>
       <Routes>

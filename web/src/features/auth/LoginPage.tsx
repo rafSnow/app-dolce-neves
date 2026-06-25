@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/providers/AuthProvider'
-import { Mail, Lock, Loader2, Sparkles } from 'lucide-react'
+import { Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react'
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -10,6 +10,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -26,7 +27,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-dolce-rosa via-dolce-creme to-white">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-dolce-rosa via-dolce-creme to-white bg-[length:400%_400%] animate-gradient-flow">
       {/* Elementos decorativos no fundo */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute -top-24 -left-24 w-64 h-64 bg-white/30 rounded-full blur-3xl"></div>
@@ -37,10 +38,11 @@ export function LoginPage() {
         
         {/* Cabecalho / Logo */}
         <div className="flex flex-col items-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-dolce-marrom to-gray-800 rounded-2xl shadow-lg flex items-center justify-center mb-6 border border-gray-700 relative overflow-hidden group">
-            <div className="absolute -top-10 -right-10 w-20 h-20 bg-dolce-rosa rounded-full blur-xl opacity-20"></div>
-            <Sparkles className="w-8 h-8 text-dolce-creme relative z-10" />
-          </div>
+          <img 
+            src={`${import.meta.env.BASE_URL}icon-192.svg`} 
+            alt="Dolce Neves Logo" 
+            className="w-20 h-20 rounded-3xl shadow-lg border-2 border-white mb-4"
+          />
           <h2 className="text-3xl font-extrabold text-dolce-marrom tracking-tight mb-2">
             Bem-vindo(a)
           </h2>
@@ -82,19 +84,27 @@ export function LoginPage() {
             {/* Campo Senha */}
             <div>
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5 ml-1">Senha</label>
-              <div className="relative">
+              <div className="relative flex items-center">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
-                  className="block w-full pl-11 pr-4 py-3.5 bg-white/70 border border-gray-200 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-dolce-rosa focus:border-transparent transition-all font-medium"
+                  className="block w-full pl-11 pr-12 py-3.5 bg-white/70 border border-gray-200 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-dolce-rosa focus:border-transparent transition-all font-medium"
                   placeholder="Sua senha secreta"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
                 />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-dolce-rosa transition-colors"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
             </div>
           </div>
