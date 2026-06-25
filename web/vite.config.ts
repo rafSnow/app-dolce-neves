@@ -5,7 +5,7 @@ import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: './',
+  base: '/app-dolce-neves/',
   plugins: [react()],
   resolve: {
     alias: {
