@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useFirestoreCollection, useFirestoreMutation } from '@/hooks/useFirestore'
 import { PedidoForm, PedidoFormData } from './PedidoForm'
 import { useBaixaEstoque, ItemBaixaEstoque } from './useBaixaEstoque'
-import { Pencil, Trash2, Plus, ShoppingBag, Calendar, DollarSign, X, CheckCircle, Clock, PackageOpen, Search } from 'lucide-react'
+import { Pencil, Trash2, Plus, ShoppingBag, Calendar, DollarSign, X, CheckCircle, Clock, PackageOpen, Search, Ban } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 
 export function PedidosPage() {
@@ -14,9 +14,12 @@ export function PedidosPage() {
   const { executarBaixaLote } = useBaixaEstoque()
   
   const { add: addLote } = useFirestoreMutation<any>('producao')
+  const { data: producoes } = useFirestoreCollection<any>('producao')
+  const { update: updateProducao } = useFirestoreMutation<any>('producao')
 
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingPedido, setEditingPedido] = useState<(PedidoFormData & {id: string}) | null>(null)
+  const [pedidoToCancel, setPedidoToCancel] = useState<(PedidoFormData & {id: string}) | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
   const handleOpenNew = () => {
@@ -32,7 +35,11 @@ export function PedidosPage() {
       if (prod && prod.insumos) {
         prod.insumos.forEach((insumoReceita: any) => {
           const rendimento = prod.rendimentoReceita || 1
-          const qtdTotalUsada = (insumoReceita.quantidadeUsadaReceita / rendimento) * item.quantidade
+          const insumoDoc = insumos?.find(i => i.id === insumoReceita.insumoId)
+          const escala = insumoDoc?.escalaComQuantidade !== false
+          const qtdTotalUsada = escala
+            ? (insumoReceita.quantidadeUsadaReceita / rendimento) * item.quantidade
+            : insumoReceita.quantidadeUsadaReceita
           const atual = mapaInsumos.get(insumoReceita.insumoId) || 0
           mapaInsumos.set(insumoReceita.insumoId, atual + qtdTotalUsada)
         })
@@ -82,6 +89,30 @@ export function PedidosPage() {
       setIsFormOpen(false)
     } catch (error: any) {
       alert('Erro ao salvar pedido: ' + error.message)
+    }
+  }
+
+  const handleCancelarPedido = (pedido: PedidoFormData & {id: string}) => {
+    setPedidoToCancel(pedido)
+  }
+
+  const handleConfirmarCancelamento = async () => {
+    if (!pedidoToCancel) return
+    
+    try {
+      // 1. Atualizar Pedido
+      await update.mutateAsync({ id: pedidoToCancel.id, data: { status: 'Cancelado' } })
+
+      // 2. Cancelar Ordem de Produção se estiver pendente
+      if (producoes) {
+        const lotes = producoes.filter(l => l.pedidoId === pedidoToCancel.id && l.status === 'Pendente')
+        for (const lote of lotes) {
+          await updateProducao.mutateAsync({ id: lote.id, data: { status: 'Cancelado' } })
+        }
+      }
+      setPedidoToCancel(null)
+    } catch (error: any) {
+      alert('Erro ao cancelar pedido: ' + error.message)
     }
   }
 
@@ -166,6 +197,48 @@ export function PedidosPage() {
         </Dialog.Portal>
       </Dialog.Root>
 
+      {/* MODAL DE CONFIRMAÇÃO DE CANCELAMENTO */}
+      <Dialog.Root open={!!pedidoToCancel} onOpenChange={(open) => !open && setPedidoToCancel(null)}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-dolce-marrom/40 backdrop-blur-sm transition-opacity animate-in fade-in" />
+          <Dialog.Content 
+            className="fixed z-50 bg-white p-6 shadow-2xl transition-transform animate-in zoom-in-95
+                       top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-md rounded-2xl flex flex-col gap-5"
+          >
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="bg-rose-100 p-2 rounded-full">
+                <Ban className="w-6 h-6" />
+              </div>
+              <Dialog.Title className="text-xl font-bold text-dolce-marrom">
+                Cancelar Pedido
+              </Dialog.Title>
+            </div>
+            
+            <p className="text-dolce-marrom/70 font-medium">
+              Tem certeza que deseja cancelar o pedido de <strong>{pedidoToCancel?.clienteNome}</strong>?
+            </p>
+            <p className="text-sm text-dolce-marrom/60 p-3 bg-rose-50 rounded-xl border border-rose-100">
+              A ordem de produção será <strong>cancelada</strong> e o valor <strong>não entrará no caixa</strong>. Esta ação não pode ser desfeita.
+            </p>
+
+            <div className="flex gap-3 mt-2">
+              <button 
+                onClick={() => setPedidoToCancel(null)}
+                className="flex-1 py-2.5 font-semibold text-dolce-marrom/70 hover:bg-gray-100 rounded-xl transition-colors"
+              >
+                Voltar
+              </button>
+              <button 
+                onClick={handleConfirmarCancelamento}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2"
+              >
+                Confirmar Cancelamento
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
       {/* LISTAGEM (CARDS MOBILE / GRID DESKTOP) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-20 md:pb-0">
         {filteredPedidos.map(pedido => {
@@ -176,9 +249,16 @@ export function PedidosPage() {
               {/* Card Header */}
               <div className="p-5 pb-3 border-b border-gray-50 flex justify-between items-start">
                 <div className="flex-1 pr-2">
-                  <h4 className="font-bold text-lg text-dolce-marrom line-clamp-1 flex items-center gap-2">
-                    {pedido.clienteNome}
-                  </h4>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="font-bold text-lg text-dolce-marrom line-clamp-1">
+                      {pedido.clienteNome}
+                    </h4>
+                    {pedido.status === 'Cancelado' && (
+                      <span className="px-2 py-0.5 bg-rose-100 text-rose-700 text-[10px] font-bold uppercase rounded-md whitespace-nowrap">
+                        Cancelado
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-1 mt-1 text-xs font-semibold text-dolce-marrom/60">
                     <Calendar className="w-3.5 h-3.5" />
                     <span>Entrega: {new Date(pedido.dataEntrega).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
@@ -219,13 +299,22 @@ export function PedidosPage() {
 
               {/* Card Footer Actions */}
               <div className="p-2 border-t border-gray-50 bg-gray-50/30 flex justify-end gap-1">
+                {pedido.status !== 'Cancelado' && (
+                  <button 
+                    onClick={() => handleCancelarPedido(pedido)} 
+                    className="py-2 px-3 flex items-center gap-1.5 text-sm font-semibold text-orange-600 hover:bg-orange-50 rounded-xl transition-colors"
+                  >
+                    <Ban className="w-4 h-4" /> Cancelar
+                  </button>
+                )}
+                <div className="flex-1"></div>
                 <button 
                   onClick={() => { setEditingPedido(pedido); setIsFormOpen(true) }} 
-                  className="flex-1 py-2 px-3 flex justify-center items-center gap-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+                  className="py-2 px-3 flex items-center gap-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
                 >
                   <Pencil className="w-4 h-4" /> Editar
                 </button>
-                <div className="w-px bg-gray-200 my-2"></div>
+                <div className="w-px bg-gray-200 my-2 mx-1"></div>
                 <button 
                   onClick={() => {
                     if (window.confirm('Tem certeza que deseja remover este pedido?')) {

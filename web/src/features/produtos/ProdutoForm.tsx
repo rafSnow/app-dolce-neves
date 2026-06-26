@@ -62,6 +62,9 @@ export function ProdutoForm({ initialData, onSubmit, onCancel }: Props) {
   const custoUnitario = calcularCustoUnitario(custoTotal, rendimento)
   const precoVendaCalculado = calcularPrecoVendaSugerido(custoUnitario, margem, comissao)
   const alerta = verificarAlertaMargem(precoVendaCalculado, custoUnitario, comissao)
+  
+  const precoVendaReceitaTotal = precoVendaCalculado * rendimento
+  const lucroReceitaTotal = alerta.lucroReal * rendimento
 
   useEffect(() => {
     if (initialData) reset(initialData)
@@ -262,15 +265,31 @@ export function ProdutoForm({ initialData, onSubmit, onCancel }: Props) {
         </div>
 
         {/* Final Price Block */}
-        <div className="bg-emerald-600 p-5 rounded-2xl shadow-[0_8px_30px_rgba(5,150,105,0.3)] text-white mb-4 relative overflow-hidden flex flex-col sm:flex-row justify-between items-center sm:items-end gap-3">
+        <div className="bg-emerald-600 p-5 rounded-2xl shadow-[0_8px_30px_rgba(5,150,105,0.3)] text-white mb-4 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
-          <div>
-            <div className="text-emerald-100 font-medium text-sm mb-1">Preço de Venda Sugerido</div>
-            <div className="text-4xl font-black tracking-tight">R$ {precoVendaCalculado.toFixed(2)}</div>
+          
+          <div className="flex flex-col sm:flex-row justify-between items-center sm:items-end gap-3 mb-4">
+            <div>
+              <div className="text-emerald-100 font-medium text-sm mb-1">Preço Sugerido (Unitário)</div>
+              <div className="text-4xl font-black tracking-tight">R$ {precoVendaCalculado.toFixed(2)}</div>
+            </div>
+            <div className="bg-white/20 px-4 py-2 rounded-xl backdrop-blur-md border border-white/10 text-right w-full sm:w-auto">
+              <div className="text-[10px] text-emerald-100 uppercase tracking-widest font-bold mb-0.5">Lucro Limpo (Unitário)</div>
+              <div className="text-xl font-bold">R$ {alerta.lucroReal.toFixed(2)} <span className="text-xs font-medium opacity-80">({alerta.margemReal.toFixed(1)}%)</span></div>
+            </div>
           </div>
-          <div className="bg-white/20 px-4 py-2 rounded-xl backdrop-blur-md border border-white/10 text-right w-full sm:w-auto">
-            <div className="text-[10px] text-emerald-100 uppercase tracking-widest font-bold mb-0.5">Lucro Limpo (Un.)</div>
-            <div className="text-xl font-bold">R$ {alerta.lucroReal.toFixed(2)} <span className="text-xs font-medium opacity-80">({alerta.margemReal.toFixed(1)}%)</span></div>
+
+          <div className="pt-4 border-t border-emerald-500/50 flex flex-col sm:flex-row justify-between gap-3 text-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-300"></div>
+              <span className="text-emerald-100 font-medium">Faturamento da Receita Inteira:</span>
+              <strong className="font-bold">R$ {precoVendaReceitaTotal.toFixed(2)}</strong>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-300"></div>
+              <span className="text-emerald-100 font-medium">Lucro da Receita Inteira:</span>
+              <strong className="font-bold">R$ {lucroReceitaTotal.toFixed(2)}</strong>
+            </div>
           </div>
         </div>
 

@@ -9,7 +9,7 @@ describe('useDashboardMetrics', () => {
     // Usaremos uma data fixa: 15 de Abril de 2024
     const refDate = new Date('2024-04-15T12:00:00Z')
 
-    const mockPedidos = [
+    const mockPedidos: any[] = [
       {
         id: 'p1',
         clienteId: '1', clienteNome: 'A',

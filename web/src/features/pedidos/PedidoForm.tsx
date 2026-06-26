@@ -20,6 +20,7 @@ const pedidoSchema = z.object({
   dataEntrega: z.string().min(1, 'Data de entrega obrigatória'),
   valorTotal: z.number().min(0),
   estoqueBaixado: z.boolean(),
+  status: z.enum(['Aberto', 'Cancelado', 'Entregue']).optional(),
   ativo: z.boolean().optional(),
   pagamentos: z.object({
     sinal: pagamentoSchema,
@@ -56,6 +57,7 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
       dataEntrega: '',
       valorTotal: 0,
       estoqueBaixado: false,
+      status: 'Aberto',
       pagamentos: {
         sinal: { valor: 0, status: 'Pendente', forma: 'Pix' },
         restante: { valor: 0, status: 'Pendente', forma: 'Pix' }
@@ -86,7 +88,11 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
       if (prod && prod.insumos) {
         prod.insumos.forEach(insReceita => {
           const rend = prod.rendimentoReceita || 1
-          const qtdTotal = (insReceita.quantidadeUsadaReceita / rend) * (item.quantidade || 1)
+          const insumoDoc = insumosDB.find((i: any) => i.id === insReceita.insumoId)
+          const escala = insumoDoc?.escalaComQuantidade !== false
+          const qtdTotal = escala 
+            ? (insReceita.quantidadeUsadaReceita / rend) * (item.quantidade || 1)
+            : insReceita.quantidadeUsadaReceita
           const atual = mapa.get(insReceita.insumoId) || 0
           mapa.set(insReceita.insumoId, atual + qtdTotal)
         })

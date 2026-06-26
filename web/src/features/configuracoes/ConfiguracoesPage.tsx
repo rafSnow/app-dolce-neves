@@ -1,14 +1,21 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/providers/AuthProvider'
 import { useFirestoreCollection, useFirestoreMutation } from '@/hooks/useFirestore'
-import { Settings, Store, Camera, Check, Lock, ChevronRight, Download } from 'lucide-react'
+import { Settings, Store, Camera, Check, Lock, ChevronRight, Download, UploadCloud, DownloadCloud, AlertTriangle, X } from 'lucide-react'
 import { usePWAInstall } from '@/hooks/usePWAInstall'
+import { useBackup } from '@/hooks/useBackup'
+import { useRef } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
 
 export function ConfiguracoesPage() {
   const { user } = useAuth()
   const { data: configs, isLoading } = useFirestoreCollection<any>('configuracoes')
   const { add, update } = useFirestoreMutation<any>('configuracoes')
   const { isInstallable, isInstalled, install } = usePWAInstall()
+  const { exportData, importData, isExporting, isImporting } = useBackup()
+  
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [fileToImport, setFileToImport] = useState<File | null>(null)
 
   const configDoc = configs?.find(c => c.id === 'global') || configs?.[0]
   const [nomeNegocio, setNomeNegocio] = useState('')
@@ -43,9 +50,25 @@ export function ConfiguracoesPage() {
     }
   }
 
+  const handleImportar = async () => {
+    if (!fileToImport) return
+    try {
+      await importData(fileToImport)
+      alert('Backup restaurado com sucesso!')
+    } catch (error) {
+      alert('Falha ao restaurar o backup.')
+    } finally {
+      setFileToImport(null)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
   if (isLoading) return <div className="flex justify-center p-8 text-dolce-marrom/50">Carregando Configurações...</div>
 
   return (
+    <>
     <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full pb-20 md:pb-0">
       
       {/* HEADER */}
@@ -157,6 +180,46 @@ export function ConfiguracoesPage() {
 
           <div className="h-px bg-gray-100 w-full"></div>
 
+          {/* Seção: Backup e Restauração */}
+          <div>
+            <h3 className="text-lg font-bold text-dolce-marrom mb-4">Backup e Restauração</h3>
+            <div className="bg-white border border-gray-200 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div>
+                <div className="font-semibold text-gray-700">Backup Manual</div>
+                <div className="text-sm text-gray-400 mt-0.5 max-w-sm">
+                  Exporte um arquivo JSON com todos os dados do sistema ou restaure um arquivo anteriormente salvo.
+                </div>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button 
+                  onClick={exportData}
+                  disabled={isExporting}
+                  className="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-dolce-marrom px-5 py-2.5 rounded-xl font-bold shadow-sm transition-all active:scale-95 disabled:opacity-50"
+                >
+                  <DownloadCloud className="w-5 h-5" />
+                  {isExporting ? 'Exportando...' : 'Exportar Backup'}
+                </button>
+                <input 
+                  type="file" 
+                  accept=".json" 
+                  ref={fileInputRef} 
+                  onChange={(e) => setFileToImport(e.target.files?.[0] || null)}
+                  className="hidden" 
+                />
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center justify-center gap-2 bg-dolce-rosa hover:bg-dolce-rosa/90 text-white px-5 py-2.5 rounded-xl font-bold shadow-md transition-all active:scale-95"
+                >
+                  <UploadCloud className="w-5 h-5" />
+                  Importar Backup
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="h-px bg-gray-100 w-full"></div>
+
           {/* Seção: Outros Ajustes (Futuro) */}
           <div className="opacity-50 cursor-not-allowed">
             <h3 className="text-lg font-bold text-dolce-marrom mb-4">Mais Opções</h3>
@@ -198,5 +261,54 @@ export function ConfiguracoesPage() {
         </div>
       </div>
     </div>
+
+    {/* MODAL DE IMPORTAÇÃO DE BACKUP */}
+    <Dialog.Root open={!!fileToImport} onOpenChange={(open) => !open && setFileToImport(null)}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-dolce-marrom/40 backdrop-blur-sm transition-opacity animate-in fade-in" />
+        <Dialog.Content 
+          className="fixed z-50 bg-white p-6 shadow-2xl transition-transform animate-in zoom-in-95
+                     top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-md rounded-2xl flex flex-col gap-5"
+        >
+          <div className="flex items-center gap-3 text-orange-600">
+            <div className="bg-orange-100 p-2 rounded-full">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <Dialog.Title className="text-xl font-bold text-dolce-marrom">
+              Restaurar Backup
+            </Dialog.Title>
+          </div>
+          
+          <p className="text-dolce-marrom/70 font-medium">
+            Você selecionou o arquivo <strong>{fileToImport?.name}</strong>.
+          </p>
+          <p className="text-sm text-dolce-marrom/60 p-3 bg-orange-50 rounded-xl border border-orange-100">
+            A restauração fará a mesclagem dos dados, substituindo informações antigas pelas do arquivo. <strong>Novos dados cadastrados não serão apagados.</strong> Você tem certeza?
+          </p>
+
+          <div className="flex gap-3 mt-2">
+            <button 
+              onClick={() => {
+                setFileToImport(null)
+                if (fileInputRef.current) fileInputRef.current.value = ''
+              }}
+              disabled={isImporting}
+              className="flex-1 py-2.5 font-semibold text-dolce-marrom/70 hover:bg-gray-100 rounded-xl transition-colors disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button 
+              onClick={handleImportar}
+              disabled={isImporting}
+              className="flex-1 py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {isImporting ? 'Restaurando...' : 'Confirmar Importação'}
+            </button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+
+    </>
   )
 }

@@ -12,6 +12,7 @@ export const insumoSchema = z.object({
   quantidadeDisponivel: z.number().min(0, 'Deve ser maior ou igual a zero'),
   quantidadeMinima: z.number().min(0, 'Deve ser maior ou igual a zero'),
   ativo: z.boolean(),
+  escalaComQuantidade: z.boolean().optional(),
 })
 
 export type InsumoFormData = z.infer<typeof insumoSchema>
@@ -33,7 +34,8 @@ export function InsumoForm({ initialData, onSubmit, onCancel }: Props) {
       precoCompra: 0,
       quantidadeDisponivel: 0,
       quantidadeMinima: 0,
-      ativo: true
+      ativo: true,
+      escalaComQuantidade: true
     }
   })
 
@@ -128,6 +130,26 @@ export function InsumoForm({ initialData, onSubmit, onCancel }: Props) {
             className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-dolce-rosa/50 focus:border-dolce-rosa transition-all" 
           />
           {errors.quantidadeMinima && <span className="text-rose-500 text-xs font-medium mt-1 inline-block">{errors.quantidadeMinima.message}</span>}
+        </div>
+      </div>
+
+      {/* Flag de Custo Fixo/Escala */}
+      <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100 flex items-start gap-3">
+        <div className="pt-1">
+          <input 
+            type="checkbox" 
+            id="escalaComQuantidade"
+            {...register('escalaComQuantidade')}
+            className="w-5 h-5 text-dolce-rosa rounded border-gray-300 focus:ring-dolce-rosa" 
+          />
+        </div>
+        <div>
+          <label htmlFor="escalaComQuantidade" className="block text-sm font-bold text-dolce-marrom mb-1 cursor-pointer">
+            Multiplicar proporcionalmente?
+          </label>
+          <p className="text-xs text-dolce-marrom/70">
+            Deixe marcado para ingredientes (Farinha, Açúcar). Desmarque para custos de uso único por fornada/pedido (Touca, Luva), assim o sistema gastará exatamente a quantidade da receita independente de quantas unidades o cliente pedir.
+          </p>
         </div>
       </div>
 
