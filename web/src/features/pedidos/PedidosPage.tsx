@@ -153,8 +153,8 @@ export function PedidosPage() {
   const handleEnviarWhatsApp = (pedido: PedidoFormData & {id: string}) => {
     const cliente = clientes?.find(c => c.id === pedido.clienteId)
     let numeroStr = ''
-    if (cliente?.telefone) {
-      numeroStr = cliente.telefone.replace(/\D/g, '')
+    if (cliente?.contato) {
+      numeroStr = cliente.contato.replace(/\D/g, '')
       if (numeroStr.length >= 10 && !numeroStr.startsWith('55')) {
         numeroStr = '55' + numeroStr
       }
