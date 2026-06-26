@@ -2,17 +2,21 @@ import { useState, useMemo } from 'react'
 import { useFirestoreCollection, useFirestoreMutation } from '@/hooks/useFirestore'
 import { PedidoForm, PedidoFormData } from './PedidoForm'
 import { useBaixaEstoque, ItemBaixaEstoque } from './useBaixaEstoque'
-import { Pencil, Trash2, Plus, ShoppingBag, Calendar, DollarSign, X, CheckCircle, Clock, PackageOpen, Search, Ban } from 'lucide-react'
+import { Pencil, Trash2, Plus, ShoppingBag, Calendar, DollarSign, X, CheckCircle, Clock, PackageOpen, Search, Ban, FileText, MessageCircle } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
+import { pdf } from '@react-pdf/renderer'
+import { ComprovantePDF } from './ComprovantePDF'
 
 export function PedidosPage() {
   const { data: pedidos, isLoading } = useFirestoreCollection<PedidoFormData & {id: string}>('pedidos')
   const { data: produtos } = useFirestoreCollection<any>('produtos')
   const { data: insumos } = useFirestoreCollection<any>('insumos')
+  const { data: configs } = useFirestoreCollection<any>('configuracoes')
+  const configDoc = configs?.find(c => c.id === 'global') || configs?.[0]
+  const nomeNegocio = configDoc?.nomeNegocio || 'Confeiteira'
   
-  const { add, update, remove } = useFirestoreMutation<PedidoFormData & {id: string}>('pedidos')
+  const { add, update } = useFirestoreMutation<PedidoFormData & {id: string}>('pedidos')
   const { executarBaixaLote } = useBaixaEstoque()
-  
   const { add: addLote } = useFirestoreMutation<any>('producao')
   const { data: producoes } = useFirestoreCollection<any>('producao')
   const { update: updateProducao } = useFirestoreMutation<any>('producao')
@@ -128,8 +132,40 @@ export function PedidosPage() {
 
   if (isLoading) return <div className="flex justify-center p-8 text-dolce-marrom/50">Carregando Pedidos...</div>
 
+  const handleGerarPDF = async (pedido: PedidoFormData & {id: string}) => {
+    try {
+      const blob = await pdf(<ComprovantePDF pedido={pedido} nomeNegocio={nomeNegocio} />).toBlob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Comprovante-${pedido.clienteNome}-${pedido.id.slice(-4)}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Erro ao gerar PDF', error)
+      alert('Não foi possível gerar o PDF.')
+    }
+  }
+
+  const handleEnviarWhatsApp = (pedido: PedidoFormData & {id: string}) => {
+    const dataFormatada = new Date(pedido.dataEntrega).toLocaleDateString('pt-BR')
+    const mensagem = `Olá, somos da *${nomeNegocio}*!
+Seu pedido foi registrado com sucesso.
+
+*Resumo do Pedido:*
+- Cliente: ${pedido.clienteNome}
+- Data de Entrega: ${dataFormatada}
+- Valor Total: R$ ${pedido.valorTotal.toFixed(2)}
+
+Qualquer dúvida, estamos à disposição!`
+    const encoded = encodeURIComponent(mensagem)
+    window.open(`https://wa.me/?text=${encoded}`, '_blank')
+  }
+
   return (
-    <div className="flex flex-col gap-6 w-full relative min-h-full">
+    <div className="flex flex-col gap-6 md:gap-8 min-h-screen">
       {/* HEADER DE TÍTULO E BOTÃO DESKTOP */}
       <div className="flex justify-between items-center">
         <div>
@@ -298,34 +334,40 @@ export function PedidosPage() {
               </div>
 
               {/* Card Footer Actions */}
-              <div className="p-2 border-t border-gray-50 bg-gray-50/30 flex justify-end gap-1">
-                {pedido.status !== 'Cancelado' && (
+              <div className="p-3 border-t border-gray-50 bg-gray-50/30 flex justify-between items-center gap-2 flex-wrap">
+                <div className="flex gap-2">
                   <button 
-                    onClick={() => handleCancelarPedido(pedido)} 
-                    className="py-2 px-3 flex items-center gap-1.5 text-sm font-semibold text-orange-600 hover:bg-orange-50 rounded-xl transition-colors"
+                    onClick={() => handleGerarPDF(pedido)} 
+                    className="p-2.5 flex items-center justify-center text-sm font-semibold text-gray-500 hover:bg-gray-200 hover:text-gray-700 rounded-xl transition-colors bg-white border border-gray-100 shadow-sm"
+                    title="Baixar PDF"
                   >
-                    <Ban className="w-4 h-4" /> Cancelar
+                    <FileText className="w-4 h-4" />
                   </button>
-                )}
-                <div className="flex-1"></div>
-                <button 
-                  onClick={() => { setEditingPedido(pedido); setIsFormOpen(true) }} 
-                  className="py-2 px-3 flex items-center gap-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
-                >
-                  <Pencil className="w-4 h-4" /> Editar
-                </button>
-                <div className="w-px bg-gray-200 my-2 mx-1"></div>
-                <button 
-                  onClick={() => {
-                    if (window.confirm('Tem certeza que deseja remover este pedido?')) {
-                      remove.mutateAsync(pedido.id)
-                    }
-                  }} 
-                  className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"
-                  aria-label="Remover"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
+                  <button 
+                    onClick={() => handleEnviarWhatsApp(pedido)} 
+                    className="p-2.5 flex items-center justify-center text-sm font-semibold text-emerald-600 hover:bg-emerald-100 rounded-xl transition-colors bg-emerald-50 shadow-sm"
+                    title="Enviar por WhatsApp"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <div className="flex flex-1 justify-end gap-2">
+                  {pedido.status !== 'Cancelado' && (
+                    <button 
+                      onClick={() => handleCancelarPedido(pedido)} 
+                      className="py-2.5 px-3 flex items-center gap-1.5 text-sm font-semibold text-orange-600 hover:bg-orange-100 rounded-xl transition-colors bg-orange-50 shadow-sm"
+                    >
+                      <Ban className="w-4 h-4" /> Cancelar
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => { setEditingPedido(pedido); setIsFormOpen(true) }} 
+                    className="py-2.5 px-4 flex items-center gap-2 text-sm font-semibold text-blue-600 hover:bg-blue-100 rounded-xl transition-colors bg-blue-50 shadow-sm"
+                  >
+                    <Pencil className="w-4 h-4" /> Editar
+                  </button>
+                </div>
               </div>
             </div>
           );

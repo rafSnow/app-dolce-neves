@@ -13,6 +13,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       includeAssets: ['icon-192.svg', 'icon-512.svg'],
+      workbox: {
+        maximumFileSizeToCacheInBytes: 5000000,
+      },
       manifest: {
         name: 'Dolce Neves',
         short_name: 'Dolce',

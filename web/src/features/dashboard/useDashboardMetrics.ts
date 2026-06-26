@@ -27,8 +27,8 @@ export function useDashboardMetrics({ pedidos = [], despesas = [], referenceDate
     const proximosPedidos = pedidos
       .filter(p => {
         const d = new Date(p.dataEntrega)
-        // A entregar do dia de hoje para frente
-        return d.getTime() >= referenceDate.getTime()
+        // A entregar do dia de hoje (real) para frente
+        return d.getTime() >= new Date().getTime()
       })
       .sort((a, b) => new Date(a.dataEntrega).getTime() - new Date(b.dataEntrega).getTime())
       .slice(0, 5)
@@ -72,8 +72,8 @@ export function useDashboardMetrics({ pedidos = [], despesas = [], referenceDate
       if (d.status === 'Pendente') {
         const venc = new Date(d.dataVencimento).getTime()
         // zera hora
-        const hoje = new Date(referenceDate.toISOString().split('T')[0]).getTime()
-        if (venc < hoje) {
+        const hojeReal = new Date(new Date().toISOString().split('T')[0]).getTime()
+        if (venc < hojeReal) {
           despesasAtrasadas.push(d)
         }
       }

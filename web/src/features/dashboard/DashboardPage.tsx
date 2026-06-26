@@ -2,8 +2,9 @@ import { useFirestoreCollection } from '@/hooks/useFirestore'
 import { useDashboardMetrics } from './useDashboardMetrics'
 import { PedidoFormData } from '../pedidos/PedidoForm'
 import { DespesaFormData } from '../financeiro/DespesaForm'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { TrendingUp, TrendingDown, Sparkles, Plus, ShoppingBag, Receipt, Users, ArrowRight } from 'lucide-react'
+import { TrendingUp, TrendingDown, Sparkles, Plus, ShoppingBag, Receipt, Users, ArrowRight, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react'
 
 export function DashboardPage() {
   const { data: pedidos, isLoading: loadingPedidos } = useFirestoreCollection<PedidoFormData & {id: string}>('pedidos')
@@ -13,9 +14,12 @@ export function DashboardPage() {
   const configDoc = configs?.find(c => c.id === 'global') || configs?.[0]
   const nomeNegocio = configDoc?.nomeNegocio || 'Confeiteira'
 
+  const [selectedDate, setSelectedDate] = useState(new Date())
+
   const metrics = useDashboardMetrics({ 
     pedidos: (pedidos || []).filter((p: any) => p.ativo !== false), 
-    despesas: (despesas || []).filter((d: any) => d.ativo !== false) 
+    despesas: (despesas || []).filter((d: any) => d.ativo !== false),
+    referenceDate: selectedDate
   })
 
   if (loadingPedidos || loadingDespesas) {
@@ -33,6 +37,30 @@ export function DashboardPage() {
   if (horaAtual >= 5 && horaAtual < 12) saudacao = 'Bom dia'
   else if (horaAtual >= 12 && horaAtual < 18) saudacao = 'Boa tarde'
 
+  // Controle de Meses
+  const handlePrevMonth = () => {
+    setSelectedDate(prev => {
+      const newDate = new Date(prev)
+      newDate.setMonth(newDate.getMonth() - 1)
+      return newDate
+    })
+  }
+
+  const handleNextMonth = () => {
+    setSelectedDate(prev => {
+      const newDate = new Date(prev)
+      newDate.setMonth(newDate.getMonth() + 1)
+      return newDate
+    })
+  }
+
+  const handleCurrentMonth = () => setSelectedDate(new Date())
+
+  const isCurrentMonth = selectedDate.getMonth() === new Date().getMonth() && selectedDate.getFullYear() === new Date().getFullYear()
+
+  const mesFormatado = selectedDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+  const mesCapitalizado = mesFormatado.charAt(0).toUpperCase() + mesFormatado.slice(1)
+
   return (
     <div className="flex flex-col gap-6 md:gap-8 min-h-screen pb-20 md:pb-8">
       
@@ -42,11 +70,40 @@ export function DashboardPage() {
           <h2 className="text-3xl md:text-4xl font-extrabold text-dolce-marrom tracking-tight mb-1">
             {saudacao}, <span className="text-dolce-rosa">{nomeNegocio}</span>!
           </h2>
-          <p className="text-dolce-marrom/60 font-medium">Aqui está o resumo do seu mês atual.</p>
+          <p className="text-dolce-marrom/60 font-medium">Aqui está o resumo financeiro da sua doceria.</p>
         </div>
-        <div className="hidden md:flex bg-white px-4 py-2 rounded-2xl shadow-sm border border-gray-100 items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span className="text-sm font-bold text-dolce-marrom">Tempo Real</span>
+        
+        {/* SELETOR DE MÊS */}
+        <div className="flex flex-col w-full md:w-1/3 gap-2 mt-2 md:mt-0">
+          <div className="flex items-center justify-between bg-white border border-gray-200 rounded-full shadow-sm p-1 w-full">
+            <button 
+              onClick={handlePrevMonth}
+              className="p-2 hover:bg-gray-50 rounded-full transition-colors text-dolce-marrom"
+              title="Mês Anterior"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <div className="px-2 flex flex-col items-center flex-1 text-center">
+              <span className="text-sm font-bold text-dolce-marrom capitalize">{mesCapitalizado}</span>
+            </div>
+            <button 
+              onClick={handleNextMonth}
+              className="p-2 hover:bg-gray-50 rounded-full transition-colors text-dolce-marrom"
+              title="Mês Seguinte"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+          
+          {!isCurrentMonth && (
+            <button 
+              onClick={handleCurrentMonth}
+              className="text-xs font-semibold text-dolce-rosa hover:text-dolce-rosa/80 flex items-center justify-center gap-1 transition-colors w-full"
+            >
+              <CalendarIcon className="w-3 h-3" />
+              Voltar para o mês atual
+            </button>
+          )}
         </div>
       </div>
 
