@@ -11,6 +11,7 @@ export function PedidosPage() {
   const { data: pedidos, isLoading } = useFirestoreCollection<PedidoFormData & {id: string}>('pedidos')
   const { data: produtos } = useFirestoreCollection<any>('produtos')
   const { data: insumos } = useFirestoreCollection<any>('insumos')
+  const { data: clientes } = useFirestoreCollection<any>('clientes')
   const { data: configs } = useFirestoreCollection<any>('configuracoes')
   const configDoc = configs?.find(c => c.id === 'global') || configs?.[0]
   const nomeNegocio = configDoc?.nomeNegocio || 'Confeiteira'
@@ -150,6 +151,15 @@ export function PedidosPage() {
   }
 
   const handleEnviarWhatsApp = (pedido: PedidoFormData & {id: string}) => {
+    const cliente = clientes?.find(c => c.id === pedido.clienteId)
+    let numeroStr = ''
+    if (cliente?.telefone) {
+      numeroStr = cliente.telefone.replace(/\D/g, '')
+      if (numeroStr.length >= 10 && !numeroStr.startsWith('55')) {
+        numeroStr = '55' + numeroStr
+      }
+    }
+
     const dataFormatada = new Date(pedido.dataEntrega).toLocaleDateString('pt-BR')
     const mensagem = `Olá, somos da *${nomeNegocio}*!
 Seu pedido foi registrado com sucesso.
@@ -161,7 +171,7 @@ Seu pedido foi registrado com sucesso.
 
 Qualquer dúvida, estamos à disposição!`
     const encoded = encodeURIComponent(mensagem)
-    window.open(`https://wa.me/?text=${encoded}`, '_blank')
+    window.open(`https://wa.me/${numeroStr}?text=${encoded}`, '_blank')
   }
 
   return (
