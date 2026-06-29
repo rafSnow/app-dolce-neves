@@ -3,7 +3,7 @@ import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useState } from 'react'
 import { useFirestoreCollection } from '@/hooks/useFirestore'
-import { PlusCircle, Flame, Droplet, PackagePlus } from 'lucide-react'
+import { PlusCircle, Flame, Droplet, PackagePlus, Clock } from 'lucide-react'
 import { useCalculadoraPrecificacao } from './useCalculadoraPrecificacao'
 import type { InsumoFormData } from '../insumos/InsumoForm'
 import { GasCalculatorModal } from './components/GasCalculatorModal'
@@ -11,6 +11,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect'
 const produtoSchema = z.object({
   nome: z.string().min(1, 'Nome é obrigatório'),
   rendimentoReceita: z.number().min(1, 'Mínimo de 1'),
+  tempoEstimadoMinutos: z.number().min(0, 'Mínimo de 0').optional(),
   comissaoPerc: z.number().min(0).max(100),
   margemLucro: z.number().min(0, 'Inválido'),
   ativo: z.boolean(),
@@ -40,6 +41,7 @@ export function ProdutoForm({ initialData, onSubmit, onCancel }: Props) {
     defaultValues: initialData || {
       nome: '',
       rendimentoReceita: 1,
+      tempoEstimadoMinutos: 0,
       comissaoPerc: 0,
       margemLucro: 100, // Margem padrão
       ativo: true,
@@ -52,13 +54,18 @@ export function ProdutoForm({ initialData, onSubmit, onCancel }: Props) {
 
   const { fields, append, remove } = useFieldArray({ control, name: 'insumos' })
 
+  const { data: configs } = useFirestoreCollection<any>('configuracoes')
+  const configDoc = configs?.find(c => c.id === 'global') || configs?.[0]
+  const valorHoraTrabalhada = configDoc?.valorHoraTrabalhada || 0
+
   // Watchers para recálculo real-time
   const insumosUsados = watch('insumos') || []
   const rendimento = watch('rendimentoReceita') || 1
   const margem = watch('margemLucro') || 0
   const comissao = watch('comissaoPerc') || 0
+  const tempoEstimadoMinutos = watch('tempoEstimadoMinutos') || 0
 
-  const custoTotal = calcularCustoTotalReceita(insumosUsados)
+  const { custoTotal, custoInsumos, custoMaoDeObra } = calcularCustoTotalReceita(insumosUsados, tempoEstimadoMinutos, valorHoraTrabalhada)
   const custoUnitario = calcularCustoUnitario(custoTotal, rendimento)
   const precoVendaCalculado = calcularPrecoVendaSugerido(custoUnitario, margem, comissao)
   const alerta = verificarAlertaMargem(precoVendaCalculado, custoUnitario, comissao)
@@ -105,12 +112,27 @@ export function ProdutoForm({ initialData, onSubmit, onCancel }: Props) {
         </div>
         
         <div className="flex-1">
-          <label className="block text-sm font-semibold text-dolce-marrom mb-1.5">Rendimento (un.)</label>
+          <label className="block text-sm font-semibold text-dolce-marrom mb-1.5">Rendimento da Receita</label>
           <input 
-            type="number" 
+            type="number" step="1" 
             {...register('rendimentoReceita', { valueAsNumber: true })} 
-            className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-dolce-rosa/50 focus:border-dolce-rosa transition-all" 
+            className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom font-medium rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-dolce-rosa/50" 
           />
+          {errors.rendimentoReceita && <p className="text-red-500 text-xs mt-1">{errors.rendimentoReceita.message}</p>}
+        </div>
+
+        <div className="flex-[1.5]">
+          <label className="block text-sm font-semibold text-dolce-marrom mb-1.5 flex items-center gap-1">
+            <Clock className="w-4 h-4 text-gray-400" />
+            Tempo Estimado (min)
+          </label>
+          <input 
+            type="number" step="1" 
+            {...register('tempoEstimadoMinutos', { valueAsNumber: true })} 
+            className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom font-medium rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-dolce-rosa/50" 
+            placeholder="Ex: 120"
+          />
+          <p className="text-xs text-gray-400 mt-1">Tempo total para fazer 1 receita inteira.</p>
         </div>
       </div>
 
@@ -233,9 +255,21 @@ export function ProdutoForm({ initialData, onSubmit, onCancel }: Props) {
         
         {/* Top Indicators */}
         <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-rose-100">
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-rose-100 relative group cursor-help">
             <div className="text-xs font-bold text-rose-600/70 uppercase tracking-wider mb-1">Custo da Receita Inteira</div>
             <div className="text-2xl font-black text-rose-600">R$ {custoTotal.toFixed(2)}</div>
+            
+            {/* Tooltip Hover for breakdown */}
+            <div className="absolute hidden group-hover:block bottom-full left-0 mb-2 w-48 bg-gray-800 text-white text-xs p-2 rounded-lg shadow-xl z-50">
+              <div className="flex justify-between mb-1">
+                <span className="text-gray-400">Insumos:</span>
+                <span className="font-bold">R$ {custoInsumos.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Mão de Obra:</span>
+                <span className="font-bold">R$ {custoMaoDeObra.toFixed(2)}</span>
+              </div>
+            </div>
           </div>
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-blue-200 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-16 h-16 bg-blue-50 rounded-bl-full -mr-4 -mt-4 opacity-50"></div>

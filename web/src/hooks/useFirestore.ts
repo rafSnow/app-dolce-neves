@@ -43,5 +43,14 @@ export function useFirestoreMutation<T>(collectionName: string) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [collectionName] })
   })
 
-  return { add: addMutation, update: updateMutation, remove: deleteMutation }
+  const setMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string, data: Partial<T> }) => {
+      const docRef = doc(db, collectionName, id)
+      await setDoc(docRef, data as any, { merge: true })
+      return { id, ...data }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [collectionName] })
+  })
+
+  return { add: addMutation, update: updateMutation, remove: deleteMutation, set: setMutation }
 }

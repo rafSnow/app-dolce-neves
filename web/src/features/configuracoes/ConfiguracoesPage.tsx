@@ -10,7 +10,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 export function ConfiguracoesPage() {
   const { user } = useAuth()
   const { data: configs, isLoading } = useFirestoreCollection<any>('configuracoes')
-  const { add, update } = useFirestoreMutation<any>('configuracoes')
+  const { set } = useFirestoreMutation<any>('configuracoes')
   const { isInstallable, isInstalled, install } = usePWAInstall()
   const { exportData, importData, isExporting, isImporting } = useBackup()
   
@@ -19,13 +19,15 @@ export function ConfiguracoesPage() {
 
   const configDoc = configs?.find(c => c.id === 'global') || configs?.[0]
   const [nomeNegocio, setNomeNegocio] = useState('')
+  const [valorHoraTrabalhada, setValorHoraTrabalhada] = useState<number>(0)
   const [isSaving, setIsSaving] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
 
   // Sincroniza estado inicial ao carregar a doc do banco
   useEffect(() => {
-    if (configDoc?.nomeNegocio) {
-      setNomeNegocio(configDoc.nomeNegocio)
+    if (configDoc) {
+      if (configDoc.nomeNegocio) setNomeNegocio(configDoc.nomeNegocio)
+      if (configDoc.valorHoraTrabalhada !== undefined) setValorHoraTrabalhada(configDoc.valorHoraTrabalhada)
     }
   }, [configDoc])
 
@@ -34,11 +36,7 @@ export function ConfiguracoesPage() {
     setIsSaved(false)
     
     try {
-      if (configDoc) {
-        await update.mutateAsync({ id: configDoc.id, data: { nomeNegocio } })
-      } else {
-        await add.mutateAsync({ id: 'global', nomeNegocio })
-      }
+      await set.mutateAsync({ id: 'global', data: { nomeNegocio, valorHoraTrabalhada } })
       
       // Feedback visual de sucesso
       setIsSaved(true)
@@ -118,6 +116,27 @@ export function ConfiguracoesPage() {
                 />
                 <p className="text-xs text-gray-400 mt-1.5 ml-1">
                   Este nome aparecerá em relatórios e futuramente na impressão de cupons.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-dolce-marrom mb-1.5">Valor da Hora Trabalhada (R$)</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-gray-400 font-medium">R$</span>
+                  </div>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    min="0"
+                    className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom font-medium rounded-xl py-3 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-dolce-rosa/50 focus:border-dolce-rosa transition-all" 
+                    value={valorHoraTrabalhada || ''}
+                    onChange={e => setValorHoraTrabalhada(parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                  />
+                </div>
+                <p className="text-xs text-gray-400 mt-1.5 ml-1">
+                  Este valor será usado para calcular o custo do seu tempo na produção de cada receita.
                 </p>
               </div>
             </div>

@@ -5,6 +5,7 @@ import { useEffect, useMemo } from 'react'
 import { useFirestoreCollection } from '@/hooks/useFirestore'
 import { useProdutosDinamicos } from '@/hooks/useProdutosDinamicos'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
+import { Clock } from 'lucide-react'
 
 const pagamentoSchema = z.object({
   valor: z.number().min(0),
@@ -20,6 +21,7 @@ const pedidoSchema = z.object({
   dataEntrega: z.string().min(1, 'Data de entrega obrigatória'),
   valorTotal: z.number().min(0),
   estoqueBaixado: z.boolean(),
+  estimativaTotalMinutos: z.number().optional(),
   status: z.enum(['Aberto', 'Cancelado', 'Entregue']).optional(),
   ativo: z.boolean().optional(),
   pagamentos: z.object({
@@ -57,6 +59,7 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
       dataEntrega: '',
       valorTotal: 0,
       estoqueBaixado: false,
+      estimativaTotalMinutos: 0,
       status: 'Aberto',
       pagamentos: {
         sinal: { valor: 0, status: 'Pendente', forma: 'Pix' },
@@ -73,11 +76,25 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
   
   // Calcula o total do pedido observando os itens profundamente
   useEffect(() => {
-    const total = itens.reduce((acc, item) => acc + ((item.valorItem) || 0), 0)
+    let total = 0
+    let totalMinutos = 0
+
+    itens.forEach(item => {
+      total += (item.valorItem || 0)
+      if (produtosDB) {
+        const prod = produtosDB.find(p => p.id === item.produtoId)
+        if (prod && prod.tempoEstimadoMinutos) {
+          const rendimento = prod.rendimentoReceita || 1
+          totalMinutos += (prod.tempoEstimadoMinutos / rendimento) * (item.quantidade || 1)
+        }
+      }
+    })
+
     setValue('valorTotal', total)
+    setValue('estimativaTotalMinutos', Math.round(totalMinutos))
     // Se não tiver sinal digitado ainda, sugere o valor total para o restante
     setValue('pagamentos.restante.valor', Math.max(0, total - sinalDigitado))
-  }, [JSON.stringify(itens), sinalDigitado, setValue])
+  }, [JSON.stringify(itens), sinalDigitado, setValue, produtosDB])
 
   const faltantes = useMemo(() => {
     if (!produtosDB || !insumosDB || !itens || itens.length === 0) return []
@@ -280,11 +297,22 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
 
       {/* SEÇÃO 4: FINANCEIRO */}
       <div className="bg-dolce-rosa-claro/20 p-5 rounded-2xl border border-dolce-rosa-claro/50">
-        <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-2">
-          <h4 className="font-bold text-lg text-dolce-marrom">Financeiro</h4>
-          <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-emerald-100 text-right">
-            <div className="text-xs font-semibold text-dolce-marrom/60 uppercase tracking-wider">Valor Total</div>
-            <div className="text-2xl font-black text-emerald-600">R$ {valorTotal?.toFixed(2) || '0.00'}</div>
+        <div className="flex justify-between items-center mb-6">
+          <h4 className="font-bold text-lg text-dolce-marrom">Financeiro e Produção</h4>
+          <div className="flex gap-3">
+            <div className="bg-orange-50 px-4 py-2 rounded-xl shadow-sm border border-orange-100 text-right">
+              <div className="text-xs font-semibold text-orange-600/70 uppercase tracking-wider flex items-center gap-1 justify-end">
+                <Clock className="w-3 h-3" />
+                Tempo de Produção
+              </div>
+              <div className="text-xl font-black text-orange-600">
+                {watch('estimativaTotalMinutos') ? `${Math.floor((watch('estimativaTotalMinutos') || 0) / 60)}h ${(watch('estimativaTotalMinutos') || 0) % 60}m` : '--'}
+              </div>
+            </div>
+            <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-emerald-100 text-right">
+              <div className="text-xs font-semibold text-dolce-marrom/60 uppercase tracking-wider">Valor Total</div>
+              <div className="text-2xl font-black text-emerald-600">R$ {valorTotal?.toFixed(2) || '0.00'}</div>
+            </div>
           </div>
         </div>
 

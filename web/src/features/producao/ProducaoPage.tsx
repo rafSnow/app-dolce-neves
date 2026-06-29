@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react'
 import { useFirestoreCollection, useFirestoreMutation } from '@/hooks/useFirestore'
 import { useBaixaEstoque } from '../pedidos/useBaixaEstoque'
-import { ChefHat, CheckCircle, Clock, Flame, Info, CheckSquare, PackageOpen, Calendar, Search } from 'lucide-react'
+import { ChefHat, CheckCircle, Clock, Flame, Info, CheckSquare, PackageOpen, Calendar, Search, Play } from 'lucide-react'
+import { FocusModal } from './components/FocusModal'
 
 export function ProducaoPage() {
   const { data: lotes, isLoading } = useFirestoreCollection<any>('producao')
@@ -10,11 +11,10 @@ export function ProducaoPage() {
   
   const { executarBaixaLote } = useBaixaEstoque()
   const [searchTerm, setSearchTerm] = useState('')
+  const [focoLote, setFocoLote] = useState<any>(null)
 
   const handleConcluir = async (lote: any) => {
     try {
-      if (!window.confirm('Tem certeza que concluiu esta produção e deseja baixar os ingredientes do estoque principal?')) return
-
       // 1. Baixar Estoque
       await executarBaixaLote(lote.insumosNecessarios)
       
@@ -39,7 +39,7 @@ export function ProducaoPage() {
 
   if (isLoading) return <div className="flex justify-center p-8 text-dolce-marrom/50">Carregando Cozinha...</div>
 
-  const pendentes = filteredLotes.filter(l => l.status === 'Pendente')
+  const pendentes = filteredLotes.filter(l => l.status === 'Pendente' || l.status === 'Em Andamento')
   const concluidos = filteredLotes.filter(l => l.status === 'Concluído')
 
   return (
@@ -91,8 +91,8 @@ export function ProducaoPage() {
                     Entrega: {new Date(lote.dataEntrega).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
                   </div>
                 </div>
-                <span className="flex items-center gap-1 bg-orange-100 text-orange-800 px-2.5 py-1 rounded-md text-xs font-bold shrink-0">
-                  <Clock className="w-3 h-3" /> Pendente
+                <span className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold shrink-0 ${lote.status === 'Em Andamento' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}`}>
+                  <Clock className="w-3 h-3" /> {lote.status === 'Em Andamento' ? 'Em Andamento' : 'Pendente'}
                 </span>
               </div>
               
@@ -112,32 +112,37 @@ export function ProducaoPage() {
                   </ul>
                 </div>
 
-                {/* INSUMOS (SEPARAÇÃO CHECKLIST) */}
-                <div className="bg-gray-50/50 rounded-xl p-3 border border-gray-100">
-                  <strong className="text-xs font-bold text-dolce-marrom/60 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                    <CheckSquare className="w-3.5 h-3.5" /> Checklist de Insumos
-                  </strong>
-                  <div className="space-y-1.5">
-                    {lote.insumosNecessarios.map((ins: any, i: number) => (
-                      <label key={i} className="flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors">
-                        <input type="checkbox" className="w-4 h-4 text-emerald-500 rounded border-gray-300 focus:ring-emerald-500 transition-all" />
-                        <span className="text-sm text-dolce-marrom flex-1">
+                {/* INSUMOS (TEXTO SIMPLES) */}
+                {lote.insumosNecessarios && lote.insumosNecessarios.length > 0 && (
+                  <div>
+                    <strong className="text-xs text-dolce-marrom/50 uppercase tracking-wider mb-1 block">
+                      Insumos Necessários
+                    </strong>
+                    <ul className="text-sm text-dolce-marrom/70 bg-orange-50/50 p-3 rounded-lg border border-orange-100/50 leading-relaxed list-disc list-inside space-y-1">
+                      {lote.insumosNecessarios.map((ins: any, i: number) => (
+                        <li key={i}>
                           <span className="font-bold">{ins.quantidadeParaBaixar.toFixed(2)} {ins.unidade}</span> de {ins.insumoNome}
-                        </span>
-                      </label>
-                    ))}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                </div>
+                )}
+
               </div>
 
               {/* ACTION BUTTON */}
               <div className="p-4 pt-0">
                 <button 
-                  onClick={() => handleConcluir(lote)} 
-                  className="w-full flex justify-center items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-4 rounded-xl shadow-[0_4px_14px_rgba(16,185,129,0.3)] transition-all active:scale-[0.98]"
+                  onClick={() => {
+                    if (!lote.focoInicioAt) {
+                      update.mutateAsync({ id: lote.id, data: { status: 'Em Andamento', focoInicioAt: Date.now() } })
+                    }
+                    setFocoLote(lote)
+                  }}
+                  className={`w-full flex justify-center items-center gap-2 font-bold py-3 px-4 rounded-xl shadow-md transition-all active:scale-[0.98] text-white ${lote.status === 'Em Andamento' ? 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/30' : 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/30'}`}
                 >
-                  <CheckCircle className="w-5 h-5" />
-                  Concluir Produção
+                  <Play className="w-5 h-5" />
+                  {lote.status === 'Em Andamento' ? 'Continuar Produção' : 'Iniciar Produção'}
                 </button>
               </div>
             </div>
@@ -186,6 +191,18 @@ export function ProducaoPage() {
         </div>
       </div>
 
+      {focoLote && (
+        <FocusModal 
+          lote={lotes?.find((l: any) => l.id === focoLote.id) || focoLote}
+          onClose={() => setFocoLote(null)}
+          onUpdateState={async (data) => {
+            await update.mutateAsync({ id: focoLote.id, data })
+          }}
+          onConcluir={async () => {
+            await handleConcluir(focoLote)
+          }}
+        />
+      )}
     </div>
   )
 }

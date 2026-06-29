@@ -7,8 +7,18 @@ export interface InsumoFichaTecnica {
 }
 
 export function useCalculadoraPrecificacao() {
-  const calcularCustoTotalReceita = (insumos: InsumoFichaTecnica[]) => {
-    return insumos.reduce((total, insumo) => total + (insumo.custoProporcionalAtual || 0), 0)
+  const calcularCustoTotalReceita = (
+    insumos: InsumoFichaTecnica[], 
+    tempoEstimadoMinutos: number = 0, 
+    valorHoraTrabalhada: number = 0
+  ) => {
+    const custoInsumos = insumos.reduce((total, insumo) => total + (insumo.custoProporcionalAtual || 0), 0)
+    const custoMaoDeObra = (tempoEstimadoMinutos / 60) * valorHoraTrabalhada
+    return {
+      custoInsumos,
+      custoMaoDeObra,
+      custoTotal: custoInsumos + custoMaoDeObra
+    }
   }
 
   const calcularCustoUnitario = (custoTotal: number, rendimento: number) => {
