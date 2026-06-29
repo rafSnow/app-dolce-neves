@@ -26,6 +26,7 @@ export function useDashboardMetrics({ pedidos = [], despesas = [], referenceDate
     // Pedidos a entregar (ordenados pelos mais próximos)
     const proximosPedidos = pedidos
       .filter(p => {
+        if (p.status === 'Cancelado' || p.status === 'Entregue') return false
         const d = new Date(p.dataEntrega)
         // A entregar do dia de hoje (real) para frente
         return d.getTime() >= new Date().getTime()
@@ -34,6 +35,8 @@ export function useDashboardMetrics({ pedidos = [], despesas = [], referenceDate
       .slice(0, 5)
 
     pedidos.forEach(p => {
+      if (p.status === 'Cancelado') return
+      
       // O faturamento ocorre na data do pedido
       if (isThisMonth(p.dataPedido)) {
         totalFaturadoMes += p.valorTotal
