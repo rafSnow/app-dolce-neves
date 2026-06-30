@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useFirestoreMutation } from '@/hooks/useFirestore'
 import { useProdutosDinamicos } from '@/hooks/useProdutosDinamicos'
 import { ProdutoForm, ProdutoFormData } from './ProdutoForm'
-import { Plus, Pencil, Trash2, BookOpen, Calculator, X, CakeSlice, Search } from 'lucide-react'
+import { Plus, Pencil, Trash2, BookOpen, Calculator, X, CakeSlice, Search, Copy } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 
 export function ProdutosPage() {
@@ -10,7 +10,7 @@ export function ProdutosPage() {
   const { add, update, remove } = useFirestoreMutation<ProdutoFormData & {id: string}>('produtos')
   
   const [isFormOpen, setIsFormOpen] = useState(false)
-  const [editingProduto, setEditingProduto] = useState<(ProdutoFormData & {id: string}) | null>(null)
+  const [editingProduto, setEditingProduto] = useState<(ProdutoFormData & {id?: string}) | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
   const handleOpenNew = () => {
@@ -18,8 +18,17 @@ export function ProdutosPage() {
     setIsFormOpen(true)
   }
 
+  const handleDuplicar = (produto: ProdutoFormData & {id: string}) => {
+    const { id, ...dataToDuplicate } = produto
+    setEditingProduto({ 
+      ...dataToDuplicate, 
+      nome: `${dataToDuplicate.nome} (Cópia)`
+    })
+    setIsFormOpen(true)
+  }
+
   const handleSubmit = async (data: ProdutoFormData) => {
-    if (editingProduto) {
+    if (editingProduto && editingProduto.id) {
       await update.mutateAsync({ id: editingProduto.id, data })
     } else {
       await add.mutateAsync(data)
@@ -146,10 +155,18 @@ export function ProdutosPage() {
             {/* Card Footer Actions */}
             <div className="p-2 border-t border-gray-50 flex justify-end gap-1">
               <button 
+                onClick={() => handleDuplicar(produto)} 
+                className="flex-1 py-2 px-3 flex justify-center items-center gap-2 text-sm font-semibold text-dolce-marrom/70 hover:bg-dolce-rosa-claro/30 rounded-xl transition-colors"
+                title="Duplicar Produto"
+              >
+                <Copy className="w-4 h-4" /> <span className="hidden sm:inline">Duplicar</span>
+              </button>
+              <div className="w-px bg-gray-200 my-2"></div>
+              <button 
                 onClick={() => { setEditingProduto(produto); setIsFormOpen(true) }} 
                 className="flex-1 py-2 px-3 flex justify-center items-center gap-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
               >
-                <Pencil className="w-4 h-4" /> Editar
+                <Pencil className="w-4 h-4" /> <span className="hidden sm:inline">Editar</span>
               </button>
               <div className="w-px bg-gray-200 my-2"></div>
               <button 

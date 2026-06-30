@@ -119,15 +119,37 @@ export function FocusModal({ lote, onClose, onUpdateState, onConcluir }: Props) 
               <strong className="text-sm text-dolce-marrom/70 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <CheckSquare className="w-4 h-4" /> Insumos Separados?
               </strong>
-              <div className="space-y-2 mt-3">
-                {lote.insumosNecessarios?.map((ins: any, i: number) => (
-                  <label key={i} className="flex items-center gap-3 p-2 bg-gray-50 rounded-xl border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors">
-                    <input type="checkbox" className="w-5 h-5 text-emerald-500 rounded border-gray-300 focus:ring-emerald-500 transition-all" />
-                    <span className="text-dolce-marrom flex-1">
-                      <span className="font-bold">{ins.quantidadeParaBaixar.toFixed(2)} {ins.unidade}</span> de {ins.insumoNome}
-                    </span>
-                  </label>
-                ))}
+              <div className="space-y-4 mt-3">
+                {lote.insumosAgrupados && lote.insumosAgrupados.length > 0 ? (
+                  lote.insumosAgrupados.map((grupo: any, gIdx: number) => (
+                    <div key={gIdx} className="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                      <strong className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide border-b border-gray-200 pb-1">
+                        {grupo.titulo}
+                      </strong>
+                      <div className="space-y-2">
+                        {grupo.itens.map((ins: any, i: number) => (
+                          <label key={i} className="flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-100 cursor-pointer hover:bg-emerald-50 transition-colors shadow-sm">
+                            <input type="checkbox" className="w-5 h-5 text-emerald-500 rounded border-gray-300 focus:ring-emerald-500 transition-all" />
+                            <span className="text-dolce-marrom flex-1">
+                              <span className="font-bold">{ins.quantidadeParaBaixar.toFixed(2)} {ins.unidade}</span> de {ins.insumoNome}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="space-y-2">
+                    {lote.insumosNecessarios?.map((ins: any, i: number) => (
+                      <label key={i} className="flex items-center gap-3 p-2 bg-gray-50 rounded-xl border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors">
+                        <input type="checkbox" className="w-5 h-5 text-emerald-500 rounded border-gray-300 focus:ring-emerald-500 transition-all" />
+                        <span className="text-dolce-marrom flex-1">
+                          <span className="font-bold">{ins.quantidadeParaBaixar.toFixed(2)} {ins.unidade}</span> de {ins.insumoNome}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

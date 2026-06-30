@@ -84,8 +84,7 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
       if (produtosDB) {
         const prod = produtosDB.find(p => p.id === item.produtoId)
         if (prod && prod.tempoEstimadoMinutos) {
-          const rendimento = prod.rendimentoReceita || 1
-          totalMinutos += (prod.tempoEstimadoMinutos / rendimento) * (item.quantidade || 1)
+          totalMinutos += prod.tempoEstimadoMinutos * (item.quantidade || 1)
         }
       }
     })
@@ -104,14 +103,20 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
       const prod = produtosDB.find(p => p.id === item.produtoId)
       if (prod && prod.insumos) {
         prod.insumos.forEach(insReceita => {
-          const rend = prod.rendimentoReceita || 1
           const insumoDoc = insumosDB.find((i: any) => i.id === insReceita.insumoId)
-          const escala = insumoDoc?.escalaComQuantidade !== false
-          const qtdTotal = escala 
-            ? (insReceita.quantidadeUsadaReceita / rend) * (item.quantidade || 1)
-            : insReceita.quantidadeUsadaReceita
+          
+          // Lógica de fallback para legados que só tem escalaComQuantidade
+          const tipoEscala = insumoDoc?.tipoEscala || (insumoDoc?.escalaComQuantidade === false ? 'por_produto' : 'proporcional')
           const atual = mapa.get(insReceita.insumoId) || 0
-          mapa.set(insReceita.insumoId, atual + qtdTotal)
+
+          if (tipoEscala === 'por_pedido') {
+            mapa.set(insReceita.insumoId, Math.max(atual, insReceita.quantidadeUsadaReceita))
+          } else if (tipoEscala === 'por_produto') {
+            mapa.set(insReceita.insumoId, atual + insReceita.quantidadeUsadaReceita)
+          } else {
+            // proporcional
+            mapa.set(insReceita.insumoId, atual + (insReceita.quantidadeUsadaReceita * (item.quantidade || 1)))
+          }
         })
       }
     })
@@ -141,10 +146,11 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
     const prod = produtosDB?.find(p => p.id === id)
     if (prod) {
       setValue(`itens.${index}.produtoNome`, prod.nome)
-      // Tira o snapshot do preço de venda MÁGICO (calculado em tempo real com base no custo de hoje)
-      setValue(`itens.${index}.precoUnitarioSnapshot`, prod.precoVendaCalculado)
+      // O preço a ser cobrado agora é o da Receita Completa (Lote)
+      const precoReceitaInteira = prod.precoVendaCalculado * (prod.rendimentoReceita || 1)
+      setValue(`itens.${index}.precoUnitarioSnapshot`, precoReceitaInteira)
       const qtd = watch(`itens.${index}.quantidade`) || 1
-      setValue(`itens.${index}.valorItem`, prod.precoVendaCalculado * qtd)
+      setValue(`itens.${index}.valorItem`, precoReceitaInteira * qtd)
     }
   }
 

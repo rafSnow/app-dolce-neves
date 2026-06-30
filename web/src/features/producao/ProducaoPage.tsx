@@ -3,9 +3,23 @@ import { useFirestoreCollection, useFirestoreMutation } from '@/hooks/useFiresto
 import { useBaixaEstoque } from '../pedidos/useBaixaEstoque'
 import { ChefHat, CheckCircle, Clock, Flame, Info, CheckSquare, PackageOpen, Calendar, Search, Play } from 'lucide-react'
 import { FocusModal } from './components/FocusModal'
+import { useProdutosDinamicos } from '@/hooks/useProdutosDinamicos'
 
+export interface InsumoAgrupado {
+  insumoId: string;
+  insumoNome: string;
+  quantidadeParaBaixar: number;
+  unidade: string;
+}
+
+export interface GrupoInsumos {
+  titulo: string;
+  itens: InsumoAgrupado[];
+}
 export function ProducaoPage() {
-  const { data: lotes, isLoading } = useFirestoreCollection<any>('producao')
+  const { data: lotes, isLoading: isLoadingLotes } = useFirestoreCollection<any>('producao')
+  const { data: produtos } = useProdutosDinamicos()
+  const { data: insumos } = useFirestoreCollection<any>('insumos')
   const { update } = useFirestoreMutation<any>('producao')
   const { update: updatePedido } = useFirestoreMutation<any>('pedidos')
   
@@ -32,12 +46,87 @@ export function ProducaoPage() {
 
   const filteredLotes = useMemo(() => {
     if (!lotes) return []
-    return lotes
+    const base = lotes
       .filter(l => l.ativo !== false)
       .filter(l => l.clienteNome.toLowerCase().includes(searchTerm.toLowerCase()))
-  }, [lotes, searchTerm])
 
-  if (isLoading) return <div className="flex justify-center p-8 text-dolce-marrom/50">Carregando Cozinha...</div>
+    // Agrupamento dinâmico
+    return base.map(lote => {
+      if (!produtos || !insumos || !lote.insumosNecessarios) return { ...lote, insumosAgrupados: [] }
+      
+      const gruposMap = new Map<string, InsumoAgrupado[]>()
+      const mapGeral = new Map<string, number>()
+      
+      if (lote.produtos) {
+        lote.produtos.forEach((pLote: any) => {
+          const pDB = produtos.find((p: any) => p.nome === pLote.nome)
+          if (pDB && pDB.insumos) {
+            pDB.insumos.forEach((insReceita: any) => {
+              const insumoDoc = insumos.find((i: any) => i.id === insReceita.insumoId)
+              if (!insumoDoc) return
+              
+              const tipoEscala = insumoDoc.tipoEscala || (insumoDoc.escalaComQuantidade === false ? 'por_produto' : 'proporcional')
+              
+              if (tipoEscala === 'por_pedido') {
+                const atual = mapGeral.get(insumoDoc.id) || 0
+                mapGeral.set(insumoDoc.id, Math.max(atual, insReceita.quantidadeUsadaReceita))
+              } else {
+                const qty = tipoEscala === 'proporcional' 
+                  ? insReceita.quantidadeUsadaReceita * pLote.quantidade 
+                  : insReceita.quantidadeUsadaReceita;
+                  
+                const arr = gruposMap.get(pLote.nome) || []
+                const existing = arr.find(a => a.insumoId === insumoDoc.id)
+                if (existing) {
+                   existing.quantidadeParaBaixar += qty
+                } else {
+                   arr.push({
+                     insumoId: insumoDoc.id,
+                     insumoNome: insumoDoc.nome,
+                     quantidadeParaBaixar: qty,
+                     unidade: insumoDoc.unidadeMedida
+                   })
+                }
+                gruposMap.set(pLote.nome, arr)
+              }
+            })
+          }
+        })
+      }
+      
+      if (mapGeral.size > 0) {
+        const arrGeral: InsumoAgrupado[] = []
+        mapGeral.forEach((qty, id) => {
+          const insumoDoc = insumos.find((i: any) => i.id === id)
+          if (insumoDoc) {
+             arrGeral.push({
+               insumoId: id,
+               insumoNome: insumoDoc.nome,
+               quantidadeParaBaixar: qty,
+               unidade: insumoDoc.unidadeMedida
+             })
+          }
+        })
+        gruposMap.set('Geral (Para todo o pedido)', arrGeral)
+      }
+
+      const insumosAgrupados: GrupoInsumos[] = Array.from(gruposMap.entries()).map(([titulo, itens]) => ({
+        titulo,
+        itens
+      }))
+      
+      // Ordena para que Geral fique primeiro
+      insumosAgrupados.sort((a, b) => {
+        if (a.titulo.includes('Geral')) return -1
+        if (b.titulo.includes('Geral')) return 1
+        return a.titulo.localeCompare(b.titulo)
+      })
+
+      return { ...lote, insumosAgrupados }
+    })
+  }, [lotes, searchTerm, produtos, insumos])
+
+  if (isLoadingLotes) return <div className="flex justify-center p-8 text-dolce-marrom/50">Carregando Cozinha...</div>
 
   const pendentes = filteredLotes.filter(l => l.status === 'Pendente' || l.status === 'Em Andamento')
   const concluidos = filteredLotes.filter(l => l.status === 'Concluído')
@@ -113,19 +202,41 @@ export function ProducaoPage() {
                 </div>
 
                 {/* INSUMOS (TEXTO SIMPLES) */}
-                {lote.insumosNecessarios && lote.insumosNecessarios.length > 0 && (
-                  <div>
+                {lote.insumosAgrupados && lote.insumosAgrupados.length > 0 ? (
+                  <div className="space-y-3">
                     <strong className="text-xs text-dolce-marrom/50 uppercase tracking-wider mb-1 block">
                       Insumos Necessários
                     </strong>
-                    <ul className="text-sm text-dolce-marrom/70 bg-orange-50/50 p-3 rounded-lg border border-orange-100/50 leading-relaxed list-disc list-inside space-y-1">
-                      {lote.insumosNecessarios.map((ins: any, i: number) => (
-                        <li key={i}>
-                          <span className="font-bold">{ins.quantidadeParaBaixar.toFixed(2)} {ins.unidade}</span> de {ins.insumoNome}
-                        </li>
-                      ))}
-                    </ul>
+                    {lote.insumosAgrupados.map((grupo: GrupoInsumos, idx: number) => (
+                      <div key={idx} className="bg-orange-50/50 p-3 rounded-lg border border-orange-100/50">
+                        <strong className="block text-xs font-bold text-orange-800 mb-1.5 uppercase tracking-wide border-b border-orange-200/50 pb-1">
+                          {grupo.titulo}
+                        </strong>
+                        <ul className="text-sm text-dolce-marrom/70 leading-relaxed list-disc list-inside space-y-1">
+                          {grupo.itens.map((ins: any, i: number) => (
+                            <li key={i}>
+                              <span className="font-bold">{ins.quantidadeParaBaixar.toFixed(2)} {ins.unidade}</span> de {ins.insumoNome}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
                   </div>
+                ) : (
+                  lote.insumosNecessarios && lote.insumosNecessarios.length > 0 && (
+                    <div>
+                      <strong className="text-xs text-dolce-marrom/50 uppercase tracking-wider mb-1 block">
+                        Insumos Necessários
+                      </strong>
+                      <ul className="text-sm text-dolce-marrom/70 bg-orange-50/50 p-3 rounded-lg border border-orange-100/50 leading-relaxed list-disc list-inside space-y-1">
+                        {lote.insumosNecessarios.map((ins: any, i: number) => (
+                          <li key={i}>
+                            <span className="font-bold">{ins.quantidadeParaBaixar.toFixed(2)} {ins.unidade}</span> de {ins.insumoNome}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )
                 )}
 
               </div>
@@ -193,7 +304,7 @@ export function ProducaoPage() {
 
       {focoLote && (
         <FocusModal 
-          lote={lotes?.find((l: any) => l.id === focoLote.id) || focoLote}
+          lote={filteredLotes.find((l: any) => l.id === focoLote.id) || focoLote}
           onClose={() => setFocoLote(null)}
           onUpdateState={async (data) => {
             await update.mutateAsync({ id: focoLote.id, data })

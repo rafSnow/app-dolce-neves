@@ -39,14 +39,18 @@ export function PedidosPage() {
       const prod = produtos?.find(p => p.id === item.produtoId)
       if (prod && prod.insumos) {
         prod.insumos.forEach((insumoReceita: any) => {
-          const rendimento = prod.rendimentoReceita || 1
           const insumoDoc = insumos?.find(i => i.id === insumoReceita.insumoId)
-          const escala = insumoDoc?.escalaComQuantidade !== false
-          const qtdTotalUsada = escala
-            ? (insumoReceita.quantidadeUsadaReceita / rendimento) * item.quantidade
-            : insumoReceita.quantidadeUsadaReceita
+          const tipoEscala = insumoDoc?.tipoEscala || (insumoDoc?.escalaComQuantidade === false ? 'por_produto' : 'proporcional')
           const atual = mapaInsumos.get(insumoReceita.insumoId) || 0
-          mapaInsumos.set(insumoReceita.insumoId, atual + qtdTotalUsada)
+
+          if (tipoEscala === 'por_pedido') {
+            mapaInsumos.set(insumoReceita.insumoId, Math.max(atual, insumoReceita.quantidadeUsadaReceita))
+          } else if (tipoEscala === 'por_produto') {
+            mapaInsumos.set(insumoReceita.insumoId, atual + insumoReceita.quantidadeUsadaReceita)
+          } else {
+            // proporcional
+            mapaInsumos.set(insumoReceita.insumoId, atual + (insumoReceita.quantidadeUsadaReceita * item.quantidade))
+          }
         })
       }
     })
@@ -110,7 +114,7 @@ export function PedidosPage() {
 
       // 2. Cancelar Ordem de Produção se estiver pendente
       if (producoes) {
-        const lotes = producoes.filter(l => l.pedidoId === pedidoToCancel.id && l.status === 'Pendente')
+        const lotes = producoes.filter(l => l.pedidoId === pedidoToCancel.id && (l.status === 'Pendente' || l.status === 'Em Andamento'))
         for (const lote of lotes) {
           await updateProducao.mutateAsync({ id: lote.id, data: { status: 'Cancelado' } })
         }
