@@ -278,13 +278,13 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
       
       {/* TABS HEADER */}
       <div className="flex bg-gray-50 p-2 rounded-xl mb-6 shadow-inner border border-gray-100">
-        <button type="button" onClick={() => setStep(1)} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm transition-all ${step === 1 ? 'bg-white text-blue-600 shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}>
+        <button type="button" onClick={() => setStep(1)} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm transition-all ${step === 1 ? 'bg-white text-dolce-rosa shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}>
           <ShoppingBag className="w-4 h-4" /> 1. Itens
         </button>
-        <button type="button" onClick={() => setStep(2)} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm transition-all ${step === 2 ? 'bg-white text-blue-600 shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}>
+        <button type="button" onClick={() => setStep(2)} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm transition-all ${step === 2 ? 'bg-white text-dolce-rosa shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}>
           <Package className="w-4 h-4" /> 2. Insumos
         </button>
-        <button type="button" onClick={() => setStep(3)} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm transition-all ${step === 3 ? 'bg-white text-blue-600 shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}>
+        <button type="button" onClick={() => setStep(3)} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm transition-all ${step === 3 ? 'bg-white text-dolce-rosa shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}>
           <Calculator className="w-4 h-4" /> 3. Precificação
         </button>
       </div>
@@ -319,7 +319,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-dolce-marrom mb-1.5">Data do Evento</label>
-                  <input type="date" {...register('dataEntrega')} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-dolce-marrom focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium" />
+                  <input type="date" {...register('dataEntrega')} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-dolce-marrom focus:ring-2 focus:ring-dolce-rosa focus:border-transparent font-medium" />
                   {errors.dataEntrega && <p className="text-red-500 text-xs mt-1 font-medium">{errors.dataEntrega.message}</p>}
                 </div>
               </div>
@@ -351,7 +351,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
                   </div>
                   <div className="flex gap-3">
                     <div className="w-24">
-                      <input type="number" min="1" {...register(`itens.${index}.quantidade`, { valueAsNumber: true })} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-dolce-marrom focus:ring-2 focus:ring-blue-500 font-bold" />
+                      <input type="number" min="1" {...register(`itens.${index}.quantidade`, { valueAsNumber: true })} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-dolce-marrom focus:ring-2 focus:ring-dolce-rosa font-bold" />
                     </div>
                     <button type="button" onClick={() => removeItem(index)} className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-xl transition-colors">
                       <X className="w-5 h-5" />
@@ -359,7 +359,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
                   </div>
                 </div>
               ))}
-              <button type="button" onClick={() => appendItem({ produtoId: '', produtoNome: '', quantidade: 1, precoUnitarioSnapshot: 0, valorItem: 0 })} className="w-full py-3 bg-white border border-dashed border-gray-300 rounded-xl text-gray-500 font-bold hover:bg-gray-50 hover:border-gray-400 transition-colors flex items-center justify-center gap-2">
+              <button type="button" onClick={() => appendItem({ produtoId: '', produtoNome: '', quantidade: 1, precoUnitarioSnapshot: 0, valorItem: 0 })} className="w-full py-3 bg-white border border-dashed border-dolce-rosa-claro text-dolce-rosa font-bold hover:bg-dolce-rosa/5 hover:border-dolce-rosa/50 transition-colors flex items-center justify-center gap-2">
                 <Plus className="w-4 h-4" /> Adicionar Produto
               </button>
               {errors.itens && <p className="text-red-500 text-xs mt-1 font-medium text-center">{errors.itens.message}</p>}
@@ -389,7 +389,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
                   </div>
                   <div className="flex gap-2">
                     <div className="w-20">
-                      <input type="number" min="1" {...register(`embalagensExtras.${index}.quantidade`, { valueAsNumber: true })} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-2 py-2 text-dolce-marrom focus:ring-2 focus:ring-blue-500 font-bold" />
+                      <input type="number" min="1" {...register(`embalagensExtras.${index}.quantidade`, { valueAsNumber: true })} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-2 py-2 text-dolce-marrom focus:ring-2 focus:ring-dolce-rosa font-bold" />
                     </div>
                     <button type="button" onClick={() => removeEmb(index)} className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-xl transition-colors">
                       <X className="w-5 h-5" />
@@ -398,7 +398,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
                 </div>
               ))}
               <button type="button" onClick={() => appendEmb({ insumoId: '', insumoNome: '', quantidade: 1 })} className="w-full py-2 bg-white border border-dashed border-gray-300 rounded-xl text-gray-500 font-bold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-sm">
-                <Plus className="w-4 h-4" /> Adicionar Embalagem
+                <Plus className="w-4 h-4" /> Adicionar Embalagem Manualmente
               </button>
             </div>
           </div>
@@ -407,8 +407,8 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
         {/* STEP 2: INSUMOS (EDICAO) */}
         {step === 2 && (
           <div className="space-y-6">
-            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3 text-blue-800 text-sm font-medium">
-              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-blue-600" />
+            <div className="bg-dolce-rosa-claro/20 p-4 rounded-xl border border-dolce-rosa-claro/50 flex items-start gap-3 text-dolce-marrom/80 text-sm font-medium">
+              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-dolce-rosa" />
               <p>Aqui você pode alterar a quantidade de insumos que serão efetivamente usados neste pedido. A precificação será recalculada baseada nesses novos pesos.</p>
             </div>
             
@@ -430,7 +430,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
                           type="number" min="0" step="0.01" 
                           value={item.quantidadeParaBaixar} 
                           onChange={(e) => handleUpdateQty(gIndex, iIndex, parseFloat(e.target.value) || 0)}
-                          className="w-24 bg-white border border-gray-300 rounded-lg p-1.5 text-right font-bold text-dolce-marrom focus:ring-2 focus:ring-blue-500" 
+                          className="w-24 bg-white border border-gray-300 rounded-lg p-1.5 text-right font-bold text-dolce-marrom focus:ring-2 focus:ring-dolce-rosa" 
                         />
                       </div>
                     </div>
@@ -468,22 +468,22 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
               </p>
             </div>
 
-            <div className="bg-blue-50 p-5 rounded-2xl border border-blue-200 space-y-4 shadow-sm">
-              <h3 className="font-bold text-blue-900 border-b border-blue-200 pb-2">Valor de Venda</h3>
+            <div className="bg-dolce-rosa-claro/20 p-5 rounded-2xl border border-dolce-rosa-claro/50 space-y-4 shadow-sm">
+              <h3 className="font-bold text-dolce-marrom border-b border-dolce-rosa-claro/50 pb-2">Valor de Venda</h3>
               <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                 <div>
-                  <span className="block text-xs text-blue-700 uppercase font-bold mb-1">Sugerido (Com Margem)</span>
-                  <span className="block text-2xl font-black text-blue-600">R$ {(watch('valorTotalSugerido') || 0).toFixed(2)}</span>
+                  <span className="block text-xs text-dolce-marrom/70 uppercase font-bold mb-1">Sugerido (Com Margem)</span>
+                  <span className="block text-2xl font-black text-dolce-rosa">R$ {(watch('valorTotalSugerido') || 0).toFixed(2)}</span>
                 </div>
                 
                 <div className="w-full md:w-48">
-                  <label className="block text-xs font-bold text-blue-900 mb-1.5">Valor Final Aplicado</label>
-                  <input type="number" step="0.01" {...register('valorTotal', { valueAsNumber: true })} className="w-full border-2 border-blue-400 bg-white rounded-xl p-3 font-black text-xl text-blue-700 shadow-inner focus:outline-none focus:ring-4 focus:ring-blue-100" />
+                  <label className="block text-xs font-bold text-dolce-marrom mb-1.5">Valor Final Aplicado</label>
+                  <input type="number" step="0.01" {...register('valorTotal', { valueAsNumber: true })} className="w-full border-2 border-dolce-rosa bg-white rounded-xl p-3 font-black text-xl text-dolce-rosa shadow-inner focus:outline-none focus:ring-4 focus:ring-dolce-rosa-claro" />
                   {errors.valorTotal && <p className="text-red-500 text-xs mt-1 font-medium">{errors.valorTotal.message}</p>}
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl p-3 border border-blue-100 flex justify-between items-center mt-4">
+              <div className="bg-white rounded-xl p-3 border border-dolce-rosa-claro/50 flex justify-between items-center mt-4">
                 <span className="text-sm font-bold text-gray-600">Lucro Real Estimado:</span>
                 <span className={`font-black ${watch('lucroEstimado') >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                   R$ {(watch('lucroEstimado') || 0).toFixed(2)}
@@ -504,11 +504,11 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
         )}
         
         {step < 3 ? (
-          <button type="button" onClick={() => setStep(s => (s + 1) as any)} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition-colors shadow-sm">
+          <button type="button" onClick={() => setStep(s => (s + 1) as any)} className="flex-1 flex items-center justify-center gap-2 bg-dolce-rosa text-white font-bold py-3 rounded-xl hover:bg-dolce-rosa/90 transition-colors shadow-sm">
             Próximo Passo <ChevronRight className="w-5 h-5" />
           </button>
         ) : (
-          <button type="submit" className="flex-1 flex items-center justify-center gap-2 bg-green-500 text-white font-bold py-3 rounded-xl hover:bg-green-600 transition-colors shadow-sm">
+          <button type="submit" className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 text-white font-bold py-3 rounded-xl hover:bg-emerald-600 transition-colors shadow-sm">
             <Save className="w-5 h-5" /> Salvar Orçamento
           </button>
         )}

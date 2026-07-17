@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useFirestoreCollection, useFirestoreMutation } from '@/hooks/useFirestore'
-import { Search, Plus, FileText, CheckCircle, X, DollarSign, Calendar, MessageCircle, Ban } from 'lucide-react'
+import { Search, Plus, FileText, CheckCircle, X, DollarSign, Calendar, MessageCircle, Ban, Pencil } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { OrcamentoForm, OrcamentoFormData } from './OrcamentoForm'
 import { useBaixaEstoque } from '@/features/pedidos/useBaixaEstoque'
@@ -135,7 +135,7 @@ export function OrcamentosPage() {
         </div>
         <button 
           onClick={handleOpenNew} 
-          className="hidden md:flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2.5 rounded-xl shadow-sm transition-colors"
+          className="hidden md:flex items-center gap-2 bg-dolce-rosa hover:bg-dolce-rosa/90 text-white font-medium px-5 py-2.5 rounded-xl shadow-sm transition-colors"
         >
           <Plus className="w-5 h-5" />
           Novo Orçamento
@@ -148,7 +148,7 @@ export function OrcamentosPage() {
         </div>
         <input
           type="text"
-          className="block w-full pl-11 pr-4 py-3 bg-white/70 border border-gray-200 rounded-2xl text-dolce-marrom placeholder-dolce-marrom/40 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm font-medium"
+          className="block w-full pl-11 pr-4 py-3 bg-white/70 border border-gray-200 rounded-2xl text-dolce-marrom placeholder-dolce-marrom/40 focus:outline-none focus:ring-2 focus:ring-dolce-rosa focus:border-transparent transition-all shadow-sm font-medium"
           placeholder="Buscar por cliente..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -157,15 +157,21 @@ export function OrcamentosPage() {
 
       <Dialog.Root open={isFormOpen} onOpenChange={setIsFormOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-50 bg-dolce-marrom/40 backdrop-blur-sm" />
-          <Dialog.Content className="fixed z-50 bg-white p-5 md:p-6 shadow-2xl transition-transform animate-in bottom-0 left-0 right-0 w-full rounded-t-3xl h-[92vh] flex flex-col md:bottom-auto md:top-[50%] md:left-[50%] md:-translate-x-1/2 md:-translate-y-1/2 md:max-w-4xl md:w-full md:rounded-2xl md:h-[90vh]">
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-dolce-marrom/40 backdrop-blur-sm transition-opacity" />
+          <Dialog.Content 
+            className="fixed z-50 bg-white p-5 md:p-6 shadow-2xl transition-transform animate-in
+                       /* Mobile: Bottom Sheet */
+                       bottom-0 left-0 right-0 w-full rounded-t-3xl h-[92vh] overflow-hidden slide-in-from-bottom flex flex-col
+                       /* Desktop: Modal Centralizado */
+                       md:bottom-auto md:top-[50%] md:left-[50%] md:-translate-x-1/2 md:-translate-y-1/2 md:max-w-4xl md:w-full md:rounded-2xl md:h-[85vh] md:zoom-in-95"
+          >
             <div className="md:hidden w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-4 shrink-0"></div>
             <div className="flex justify-between items-center mb-4 shrink-0">
               <Dialog.Title className="text-xl font-bold text-dolce-marrom">
                 {editingOrcamento ? 'Editar Orçamento' : 'Novo Orçamento'}
               </Dialog.Title>
               <Dialog.Close asChild>
-                <button className="p-2 text-dolce-marrom/50 hover:bg-gray-100 rounded-xl transition-colors">
+                <button className="p-2 text-dolce-marrom/50 hover:bg-dolce-rosa-claro hover:text-dolce-marrom rounded-xl transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </Dialog.Close>
@@ -183,84 +189,103 @@ export function OrcamentosPage() {
         </Dialog.Portal>
       </Dialog.Root>
 
-      {filtered.length === 0 ? (
-        <div className="bg-white rounded-3xl p-12 text-center border border-gray-100 shadow-sm flex flex-col items-center justify-center min-h-[40vh]">
-          <div className="bg-blue-50 p-4 rounded-full mb-4">
-            <FileText className="w-8 h-8 text-blue-500 opacity-80" />
-          </div>
-          <h3 className="text-lg font-bold text-dolce-marrom mb-2">Nenhum orçamento encontrado</h3>
-          <p className="text-dolce-marrom/60 max-w-sm mx-auto mb-6">
+      {orcamentos?.length === 0 && !searchTerm && (
+        <div className="col-span-full flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-dashed border-dolce-rosa-claro text-dolce-marrom/50">
+          <FileText className="w-16 h-16 mb-4 opacity-30" />
+          <h3 className="text-lg font-bold mb-1">Nenhum orçamento encontrado</h3>
+          <p className="text-sm font-medium text-center px-4">
             Crie cotações para seus clientes com preços dinâmicos baseados nas fichas técnicas.
           </p>
           <button 
             onClick={handleOpenNew}
-            className="md:hidden flex items-center gap-2 bg-blue-600 text-white font-bold px-6 py-3 rounded-xl shadow-md"
+            className="mt-6 flex items-center gap-2 bg-dolce-rosa text-white font-medium px-5 py-2.5 rounded-xl shadow-sm transition-colors"
           >
             <Plus className="w-5 h-5" />
-            Criar Orçamento
+            Novo Orçamento
           </button>
         </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      )}
+
+      {orcamentos?.length !== 0 && filtered.length === 0 && (
+        <div className="col-span-full flex flex-col items-center justify-center py-16 text-dolce-marrom/50">
+          <Search className="w-16 h-16 mb-4 opacity-30" />
+          <h3 className="text-lg font-bold mb-1">Nenhum resultado</h3>
+          <p className="text-sm font-medium text-center px-4">Não encontramos orçamentos para "{searchTerm}".</p>
+        </div>
+      )}
+
+      {filtered.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-20 md:pb-0">
           {filtered.map(orc => (
-            <div key={orc.id} className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex flex-col gap-4 relative overflow-hidden group">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-bold text-lg text-dolce-marrom">{orc.clienteNome}</h3>
-                  <div className="flex items-center gap-1.5 text-xs text-dolce-marrom/60 mt-1">
+            <div key={orc.id} className="bg-white rounded-2xl shadow-sm border border-dolce-rosa-claro/50 flex flex-col overflow-hidden hover:shadow-md transition-shadow">
+              <div className="p-5 pb-3 border-b border-gray-50 flex justify-between items-start">
+                <div className="flex-1 pr-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="font-bold text-lg text-dolce-marrom line-clamp-1">{orc.clienteNome}</h4>
+                  </div>
+                  <div className="flex items-center gap-1 mt-1 text-xs font-semibold text-dolce-marrom/60">
                     <Calendar className="w-3.5 h-3.5" />
                     <span>Evento: {new Date(orc.dataEntrega).toLocaleDateString()}</span>
                   </div>
                 </div>
-                <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${
-                  orc.status === 'Aprovado' ? 'bg-green-100 text-green-700' :
-                  orc.status === 'Rejeitado' ? 'bg-red-100 text-red-700' :
-                  'bg-yellow-100 text-yellow-700'
+                <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded-md whitespace-nowrap ${
+                  orc.status === 'Aprovado' ? 'bg-emerald-100 text-emerald-800' :
+                  orc.status === 'Rejeitado' ? 'bg-rose-100 text-rose-800' :
+                  'bg-orange-100 text-orange-800'
                 }`}>
                   {orc.status}
                 </span>
               </div>
 
-              <div className="bg-gray-50 rounded-xl p-3 flex flex-col gap-2 text-sm">
-                <div className="font-medium text-dolce-marrom/80">
-                  {orc.itens?.length || 0} produto(s)
+              <div className="p-5 flex flex-col gap-3 flex-1">
+                <div className="flex justify-between items-center bg-gray-50/50 p-3 rounded-xl">
+                  <span className="text-sm font-medium text-dolce-marrom/70 flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-emerald-600" /> Valor Sugerido
+                  </span>
+                  <span className="font-bold text-lg text-emerald-700">
+                    R$ {orc.valorTotal?.toFixed(2)}
+                  </span>
                 </div>
-                <div className="flex justify-between items-center font-bold text-dolce-marrom text-base border-t border-gray-200/60 pt-2 mt-1">
-                  <span>Valor Final:</span>
-                  <span className="text-blue-600">R$ {orc.valorTotal?.toFixed(2)}</span>
+
+                <div className="flex justify-between items-center px-1">
+                  <span className="text-sm font-medium text-dolce-marrom/70">Itens Cotados</span>
+                  <span className="text-sm font-bold text-dolce-marrom">{orc.itens?.length || 0} produto(s)</span>
                 </div>
               </div>
 
               {orc.status === 'Aberto' && (
-                <div className="grid grid-cols-2 gap-2 mt-auto">
+                <div className="px-5 pb-3 grid grid-cols-2 gap-2 mt-auto">
                   <button 
                     onClick={() => handleAprovar(orc)}
-                    className="flex items-center justify-center gap-1.5 bg-green-50 text-green-700 hover:bg-green-100 py-2 rounded-xl font-bold transition-colors text-sm"
+                    className="flex items-center justify-center gap-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 py-2 rounded-xl font-bold transition-colors text-sm shadow-sm"
                   >
                     <CheckCircle className="w-4 h-4" /> Aprovar
                   </button>
                   <button 
                     onClick={() => handleRejeitar(orc)}
-                    className="flex items-center justify-center gap-1.5 bg-red-50 text-red-600 hover:bg-red-100 py-2 rounded-xl font-bold transition-colors text-sm"
+                    className="flex items-center justify-center gap-1.5 bg-orange-50 text-orange-600 hover:bg-orange-100 py-2 rounded-xl font-bold transition-colors text-sm shadow-sm"
                   >
                     <Ban className="w-4 h-4" /> Rejeitar
                   </button>
                 </div>
               )}
 
-              <div className="flex gap-2">
-                <button
-                  onClick={() => { setEditingOrcamento(orc); setIsFormOpen(true) }}
-                  className="flex-1 bg-gray-100 text-dolce-marrom hover:bg-gray-200 py-2 rounded-xl font-bold transition-colors text-sm"
-                >
-                  Ver Detalhes
-                </button>
+              <div className="p-3 border-t border-gray-50 bg-gray-50/30 flex justify-between items-center gap-2 flex-wrap">
                 <button
                   onClick={() => sendWhatsApp(orc)}
-                  className="flex items-center justify-center w-10 bg-green-500 text-white hover:bg-green-600 rounded-xl transition-colors"
+                  className="p-2.5 flex items-center justify-center text-sm font-semibold text-emerald-600 hover:bg-emerald-100 rounded-xl transition-colors bg-emerald-50 shadow-sm"
+                  title="Enviar por WhatsApp"
                 >
                   <MessageCircle className="w-4 h-4" />
                 </button>
+                <div className="flex flex-1 justify-end gap-2">
+                  <button
+                    onClick={() => { setEditingOrcamento(orc); setIsFormOpen(true) }}
+                    className="py-2.5 px-4 flex items-center gap-2 text-sm font-semibold text-dolce-rosa hover:bg-dolce-rosa-claro/50 rounded-xl transition-colors bg-dolce-rosa-claro/30 shadow-sm"
+                  >
+                    <Pencil className="w-4 h-4" /> Editar
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -270,9 +295,10 @@ export function OrcamentosPage() {
       {/* FAB Mobile */}
       <button 
         onClick={handleOpenNew}
-        className="md:hidden fixed bottom-20 right-6 w-14 h-14 bg-blue-600 text-white rounded-2xl shadow-lg flex items-center justify-center hover:bg-blue-700 active:scale-95 transition-all z-30"
+        className="md:hidden fixed bottom-24 right-5 z-40 bg-dolce-rosa text-white p-4 rounded-2xl shadow-[0_4px_14px_rgba(201,107,122,0.4)] hover:scale-105 active:scale-95 transition-transform"
+        aria-label="Novo Orçamento"
       >
-        <Plus className="w-6 h-6" />
+        <Plus className="w-7 h-7" />
       </button>
     </div>
   )
