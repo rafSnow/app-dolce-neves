@@ -206,91 +206,44 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
     setValue('insumosCustomizados', planos)
   }, [gruposInsumos, insumosDB])
 
-  // STEP 3: Cálculos de Precificação Automáticos
+  // LÓGICA DE PRECIFICAÇÃO (Igual a PedidoForm)
   useEffect(() => {
-    if (!produtosDB) return
-    
-    // Calcula tempo total
+    let total = 0
     let tempoTotal = 0
-    let totalSugeridoCalculado = 0
-    let somaComissaoSugerida = 0
 
-    try {
-      watchedItens.forEach(item => {
+    watchedItens.forEach(item => {
+      total += (item.valorItem || 0)
+      if (produtosDB) {
         const prod = produtosDB.find(p => p.id === item.produtoId)
         if (prod) {
-          // Tempo do item
           const rendimento = prod.rendimento || 1
           const tempoPorUnidade = (prod.tempoPreparoMinutos || 0) / rendimento
-          const tempoItem = tempoPorUnidade * item.quantidade
-          tempoTotal += tempoItem
+          tempoTotal += tempoPorUnidade * item.quantidade
+        }
+      }
+    })
 
-          // Procura se tem grupo editado específico para este produto
-          const grupoEditado = gruposInsumos.find((g: any) => g.titulo === item.produtoNome)
-          
-          let custoInsumosDesteItem = 0
-          if (grupoEditado) {
-            custoInsumosDesteItem = grupoEditado.itens.reduce((acc: number, i: any) => {
-              const dbIns = insumosDB?.find(x => x.id === i.insumoId)
-              let custoUnidade = dbIns?.custoPorUnidadeMedida
-              if (custoUnidade === undefined && dbIns) {
-                 custoUnidade = dbIns.pesoVolumeTotal > 0 ? (dbIns.precoCompra / dbIns.pesoVolumeTotal) : 0
-              }
-              const custoIns = i.quantidadeParaBaixar * (custoUnidade || 0)
-              return acc + custoIns
-            }, 0)
+    if (insumosDB) {
+      watchedEmbalagens.forEach(emb => {
+        if (emb.insumoId && emb.quantidade) {
+          const insumoDoc = insumosDB.find((i: any) => i.id === emb.insumoId)
+          if (insumoDoc) {
+            const custoUnidade = insumoDoc.custoPorUnidadeMedida ?? (insumoDoc.pesoVolumeTotal > 0 ? (insumoDoc.precoCompra / insumoDoc.pesoVolumeTotal) : 0)
+            total += custoUnidade * emb.quantidade
           }
-
-          const custoMaoDeObraItem = tempoItem * (valorHoraTrabalhada / 60)
-          const custoTotalItem = custoInsumosDesteItem + custoMaoDeObraItem
-          
-          const sugeridoItem = calcularPrecoVendaSugerido(custoTotalItem, prod.margemLucro || 0, prod.comissaoPerc || 0)
-          totalSugeridoCalculado += sugeridoItem
-          somaComissaoSugerida += sugeridoItem * ((prod.comissaoPerc || 0) / 100)
         }
       })
-      
-      // Soma o custo do grupo "Geral" (Embalagens, etc)
-      const grupoGeral = gruposInsumos.find((g: any) => g.titulo?.includes('Geral'))
-      if (grupoGeral) {
-        const custoGeral = grupoGeral.itens.reduce((acc: number, i: any) => {
-           const dbIns = insumosDB?.find(x => x.id === i.insumoId)
-           let custoUnidade = dbIns?.custoPorUnidadeMedida
-           if (custoUnidade === undefined && dbIns) {
-              custoUnidade = dbIns.pesoVolumeTotal > 0 ? (dbIns.precoCompra / dbIns.pesoVolumeTotal) : 0
-           }
-           return acc + (i.quantidadeParaBaixar * (custoUnidade || 0))
-        }, 0)
-        totalSugeridoCalculado += custoGeral
-      }
-
-      setValue('tempoEstimadoTotal', tempoTotal)
-
-      // Custo Total Geral (Insumos + Mão de obra global)
-      const custoInsumosGeral = watchedInsumosCustomizados.reduce((acc: number, item: any) => acc + (item.custoProporcionalAtual || 0), 0)
-      console.log('Custo Insumos Geral:', custoInsumosGeral)
-      setValue('custoInsumosTotal', custoInsumosGeral)
-
-      const custosGlobais = calcularCustoTotalReceita(watchedInsumosCustomizados, tempoTotal, valorHoraTrabalhada)
-      console.log('Custo Mão de Obra Total:', custosGlobais.custoMaoDeObra)
-      setValue('custoMaoDeObraTotal', custosGlobais.custoMaoDeObra)
-      
-      console.log('Valor Total Sugerido:', totalSugeridoCalculado)
-      setValue('valorTotalSugerido', totalSugeridoCalculado)
-
-      // Lucro e alertas com base no valorTotal Aplicado
-      if (valorTotalAplicado > 0) {
-        const comissaoMediaPerc = totalSugeridoCalculado > 0 ? (somaComissaoSugerida / totalSugeridoCalculado) * 100 : 0
-        const info = verificarAlertaMargem(valorTotalAplicado, custosGlobais.custoTotal, comissaoMediaPerc)
-        console.log('Lucro Real Estimado:', info.lucroReal)
-        setValue('lucroEstimado', info.lucroReal)
-      } else {
-        setValue('lucroEstimado', 0)
-      }
-    } catch (e) {
-      console.error('ERRO NO CALCULO DE PRECIFICACAO:', e)
     }
-  }, [watchedInsumosCustomizados, watchedItens, gruposInsumos, valorHoraTrabalhada, valorTotalAplicado, produtosDB, insumosDB])
+
+    setValue('valorTotal', total)
+    setValue('tempoEstimadoTotal', Math.round(tempoTotal))
+    
+    // Opcional: Manter retrocompatibilidade de campos se eles ainda existirem no banco
+    setValue('valorTotalSugerido', total)
+    setValue('custoInsumosTotal', 0)
+    setValue('custoMaoDeObraTotal', 0)
+    setValue('lucroEstimado', 0)
+  }, [JSON.stringify(watchedItens), JSON.stringify(watchedEmbalagens), produtosDB, insumosDB, setValue])
 
   const handleUpdateQty = (gIndex: number, iIndex: number, newVal: number) => {
     const editados = [...(watch('insumosAgrupadosEditados') || gruposInsumos)]
@@ -373,6 +326,11 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
                             const p = produtosDB?.find(x => x.id === val)
                             if (p) {
                               setValue(`itens.${index}.produtoNome`, p.nome)
+                              // Lógica do Pedido: pega o preço de venda da receita inteira
+                              const precoReceitaInteira = p.precoVendaCalculado * (p.rendimentoReceita || 1)
+                              setValue(`itens.${index}.precoUnitarioSnapshot`, precoReceitaInteira)
+                              const qtd = watch(`itens.${index}.quantidade`) || 1
+                              setValue(`itens.${index}.valorItem`, precoReceitaInteira * qtd)
                             }
                           }}
                           placeholder="Selecione um produto..."
@@ -382,7 +340,17 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
                   </div>
                   <div className="flex gap-3">
                     <div className="w-24">
-                      <input type="number" min="1" {...register(`itens.${index}.quantidade`, { valueAsNumber: true })} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-dolce-marrom focus:ring-2 focus:ring-dolce-rosa font-bold" />
+                      <input 
+                        type="number" min="1" 
+                        {...register(`itens.${index}.quantidade`, { valueAsNumber: true })} 
+                        onChange={(e) => {
+                          const qty = parseFloat(e.target.value) || 0
+                          setValue(`itens.${index}.quantidade`, qty)
+                          const precoSnap = watch(`itens.${index}.precoUnitarioSnapshot`) || 0
+                          setValue(`itens.${index}.valorItem`, precoSnap * qty)
+                        }}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-dolce-marrom focus:ring-2 focus:ring-dolce-rosa font-bold" 
+                      />
                     </div>
                     <button type="button" onClick={() => removeItem(index)} className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-xl transition-colors">
                       <X className="w-5 h-5" />
@@ -475,55 +443,15 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
           </div>
         )}
 
-        {/* STEP 3: PRECIFICACAO MAGICA */}
-        {step === 3 && (
-          <div className="space-y-6">
-            <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 space-y-4">
-              <h3 className="font-bold text-dolce-marrom border-b border-gray-200 pb-2">Custos Base</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm text-center">
-                  <span className="block text-xs text-gray-500 uppercase font-bold mb-1">Total Insumos</span>
-                  <span className="block text-lg font-black text-rose-600">R$ {(watch('custoInsumosTotal') || 0).toFixed(2)}</span>
-                </div>
-                <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm text-center">
-                  <span className="block text-xs text-gray-500 uppercase font-bold mb-1">Mão de Obra</span>
-                  <span className="block text-lg font-black text-rose-600">R$ {(watch('custoMaoDeObraTotal') || 0).toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
+      </div>
 
-            <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 space-y-4">
-              <h3 className="font-bold text-dolce-marrom border-b border-gray-200 pb-2">Informações de Margem</h3>
-              <p className="text-sm text-gray-500">
-                O cálculo de precificação está utilizando automaticamente o <strong>Valor da Hora Trabalhada (R$ {valorHoraTrabalhada.toFixed(2)})</strong> configurado globalmente, além da <strong>Margem de Lucro</strong> e <strong>Comissão</strong> configuradas individualmente em cada Produto selecionado no Passo 1.
-              </p>
-            </div>
-
-            <div className="bg-dolce-rosa-claro/20 p-5 rounded-2xl border border-dolce-rosa-claro/50 space-y-4 shadow-sm">
-              <h3 className="font-bold text-dolce-marrom border-b border-dolce-rosa-claro/50 pb-2">Valor de Venda</h3>
-              <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-                <div>
-                  <span className="block text-xs text-dolce-marrom/70 uppercase font-bold mb-1">Sugerido (Com Margem)</span>
-                  <span className="block text-2xl font-black text-dolce-rosa">R$ {(watch('valorTotalSugerido') || 0).toFixed(2)}</span>
-                </div>
-                
-                <div className="w-full md:w-48">
-                  <label className="block text-xs font-bold text-dolce-marrom mb-1.5">Valor Final Aplicado</label>
-                  <input type="number" step="0.01" {...register('valorTotal', { valueAsNumber: true })} className="w-full border-2 border-dolce-rosa bg-white rounded-xl p-3 font-black text-xl text-dolce-rosa shadow-inner focus:outline-none focus:ring-4 focus:ring-dolce-rosa-claro" />
-                  {errors.valorTotal && <p className="text-red-500 text-xs mt-1 font-medium">{errors.valorTotal.message}</p>}
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl p-3 border border-dolce-rosa-claro/50 flex justify-between items-center mt-4">
-                <span className="text-sm font-bold text-gray-600">Lucro Real Estimado:</span>
-                <span className={`font-black ${watch('lucroEstimado') >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                  R$ {(watch('lucroEstimado') || 0).toFixed(2)}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
+      {/* RENDERIZA O TOTAL DO ORÇAMENTO IGUAL AO PEDIDO */}
+      <div className="mb-4 bg-dolce-rosa-claro/20 p-5 rounded-2xl border border-dolce-rosa-claro/50 flex justify-between items-center">
+        <div className="flex flex-col">
+          <span className="text-sm font-bold text-dolce-marrom/70 uppercase">Total do Orçamento</span>
+          <span className="text-xs text-dolce-marrom/50 mt-1">Este valor será utilizado se o pedido for aprovado.</span>
+        </div>
+        <h3 className="text-3xl font-black text-dolce-rosa">R$ {(watch('valorTotal') || 0).toFixed(2)}</h3>
       </div>
 
       {/* FOOTER ACTIONS FIXAS */}
@@ -534,7 +462,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
           </button>
         )}
         
-        {step < 3 ? (
+        {step < 2 ? (
           <button type="button" onClick={() => setStep(s => (s + 1) as any)} className="flex-1 flex items-center justify-center gap-2 bg-dolce-rosa text-white font-bold py-3 rounded-xl hover:bg-dolce-rosa/90 transition-colors shadow-sm">
             Próximo Passo <ChevronRight className="w-5 h-5" />
           </button>
