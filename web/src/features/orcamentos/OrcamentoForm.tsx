@@ -192,73 +192,97 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
 
   // STEP 3: Cálculos de Precificação Automáticos
   useEffect(() => {
-    if (!produtosDB) return
+    console.log('--- INICIO CALCULO PRECIFICAÇÃO ---')
+    console.log('produtosDB:', produtosDB)
+    console.log('insumosDB:', insumosDB)
+    console.log('gruposInsumos:', gruposInsumos)
+    console.log('watchedItens:', watchedItens)
+
+    if (!produtosDB) {
+      console.log('Abortado: produtosDB não carregado.')
+      return
+    }
     
     // Calcula tempo total
     let tempoTotal = 0
     let totalSugeridoCalculado = 0
     let somaComissaoSugerida = 0
 
-    watchedItens.forEach(item => {
-      const prod = produtosDB.find(p => p.id === item.produtoId)
-      if (prod) {
-        // Tempo do item
-        const rendimento = prod.rendimento || 1
-        const tempoPorUnidade = (prod.tempoPreparoMinutos || 0) / rendimento
-        const tempoItem = tempoPorUnidade * item.quantidade
-        tempoTotal += tempoItem
+    try {
+      watchedItens.forEach(item => {
+        const prod = produtosDB.find(p => p.id === item.produtoId)
+        console.log('Processando item:', item.produtoNome, 'Prod encontrado:', !!prod)
+        if (prod) {
+          // Tempo do item
+          const rendimento = prod.rendimento || 1
+          const tempoPorUnidade = (prod.tempoPreparoMinutos || 0) / rendimento
+          const tempoItem = tempoPorUnidade * item.quantidade
+          tempoTotal += tempoItem
+          console.log(`Tempo item ${item.produtoNome}:`, tempoItem)
 
-        // Procura se tem grupo editado específico para este produto
-        const grupoEditado = gruposInsumos.find((g: any) => g.titulo === item.produtoNome)
-        
-        let custoInsumosDesteItem = 0
-        if (grupoEditado) {
-          custoInsumosDesteItem = grupoEditado.itens.reduce((acc: number, i: any) => {
-            const dbIns = insumosDB?.find(x => x.id === i.insumoId)
-            return acc + (i.quantidadeParaBaixar * (dbIns?.custoPorUnidadeMedida || 0))
-          }, 0)
+          // Procura se tem grupo editado específico para este produto
+          const grupoEditado = gruposInsumos.find((g: any) => g.titulo === item.produtoNome)
+          console.log(`Grupo editado para ${item.produtoNome}:`, !!grupoEditado)
+          
+          let custoInsumosDesteItem = 0
+          if (grupoEditado) {
+            custoInsumosDesteItem = grupoEditado.itens.reduce((acc: number, i: any) => {
+              const dbIns = insumosDB?.find(x => x.id === i.insumoId)
+              const custoIns = i.quantidadeParaBaixar * (dbIns?.custoPorUnidadeMedida || 0)
+              return acc + custoIns
+            }, 0)
+          }
+          console.log(`Custo Insumos ${item.produtoNome}:`, custoInsumosDesteItem)
+
+          const custoMaoDeObraItem = tempoItem * (valorHoraTrabalhada / 60)
+          const custoTotalItem = custoInsumosDesteItem + custoMaoDeObraItem
+          
+          const sugeridoItem = calcularPrecoVendaSugerido(custoTotalItem, prod.margemLucro || 0, prod.comissaoPerc || 0)
+          console.log(`Sugerido item ${item.produtoNome}:`, sugeridoItem)
+          totalSugeridoCalculado += sugeridoItem
+          somaComissaoSugerida += sugeridoItem * ((prod.comissaoPerc || 0) / 100)
         }
-
-        const custoMaoDeObraItem = tempoItem * (valorHoraTrabalhada / 60)
-        const custoTotalItem = custoInsumosDesteItem + custoMaoDeObraItem
-        
-        const sugeridoItem = calcularPrecoVendaSugerido(custoTotalItem, prod.margemLucro || 0, prod.comissaoPerc || 0)
-        totalSugeridoCalculado += sugeridoItem
-        somaComissaoSugerida += sugeridoItem * ((prod.comissaoPerc || 0) / 100)
+      })
+      
+      // Soma o custo do grupo "Geral" (Embalagens, etc)
+      const grupoGeral = gruposInsumos.find((g: any) => g.titulo?.includes('Geral'))
+      console.log('Grupo Geral encontrado:', !!grupoGeral)
+      if (grupoGeral) {
+        const custoGeral = grupoGeral.itens.reduce((acc: number, i: any) => {
+           const dbIns = insumosDB?.find(x => x.id === i.insumoId)
+           return acc + (i.quantidadeParaBaixar * (dbIns?.custoPorUnidadeMedida || 0))
+        }, 0)
+        console.log('Custo Geral (Embalagens):', custoGeral)
+        totalSugeridoCalculado += custoGeral
       }
-    })
-    
-    // Soma o custo do grupo "Geral" (Embalagens, etc)
-    const grupoGeral = gruposInsumos.find((g: any) => g.titulo?.includes('Geral'))
-    if (grupoGeral) {
-      const custoGeral = grupoGeral.itens.reduce((acc: number, i: any) => {
-         const dbIns = insumosDB?.find(x => x.id === i.insumoId)
-         return acc + (i.quantidadeParaBaixar * (dbIns?.custoPorUnidadeMedida || 0))
-      }, 0)
-      totalSugeridoCalculado += custoGeral
+
+      console.log('Tempo Estimado Total:', tempoTotal)
+      setValue('tempoEstimadoTotal', tempoTotal)
+
+      // Custo Total Geral (Insumos + Mão de obra global)
+      const custoInsumosGeral = watchedInsumosCustomizados.reduce((acc: number, item: any) => acc + (item.custoProporcionalAtual || 0), 0)
+      console.log('Custo Insumos Geral:', custoInsumosGeral)
+      setValue('custoInsumosTotal', custoInsumosGeral)
+
+      const custosGlobais = calcularCustoTotalReceita(watchedInsumosCustomizados, tempoTotal, valorHoraTrabalhada)
+      console.log('Custo Mão de Obra Total:', custosGlobais.custoMaoDeObra)
+      setValue('custoMaoDeObraTotal', custosGlobais.custoMaoDeObra)
+      
+      console.log('Valor Total Sugerido:', totalSugeridoCalculado)
+      setValue('valorTotalSugerido', totalSugeridoCalculado)
+
+      // Lucro e alertas com base no valorTotal Aplicado
+      if (valorTotalAplicado > 0) {
+        const comissaoMediaPerc = totalSugeridoCalculado > 0 ? (somaComissaoSugerida / totalSugeridoCalculado) * 100 : 0
+        const info = verificarAlertaMargem(valorTotalAplicado, custosGlobais.custoTotal, comissaoMediaPerc)
+        console.log('Lucro Real Estimado:', info.lucroReal)
+        setValue('lucroEstimado', info.lucroReal)
+      } else {
+        setValue('lucroEstimado', 0)
+      }
+    } catch (e) {
+      console.error('ERRO NO CALCULO DE PRECIFICACAO:', e)
     }
-
-    setValue('tempoEstimadoTotal', tempoTotal)
-
-    // Custo Total Geral (Insumos + Mão de obra global)
-    const custoInsumosGeral = watchedInsumosCustomizados.reduce((acc: number, item: any) => acc + (item.custoProporcionalAtual || 0), 0)
-    setValue('custoInsumosTotal', custoInsumosGeral)
-
-    const custosGlobais = calcularCustoTotalReceita(watchedInsumosCustomizados, tempoTotal, valorHoraTrabalhada)
-    setValue('custoMaoDeObraTotal', custosGlobais.custoMaoDeObra)
-    
-    setValue('valorTotalSugerido', totalSugeridoCalculado)
-
-    // Lucro e alertas com base no valorTotal Aplicado
-    if (valorTotalAplicado > 0) {
-      // Como a comissão pode variar por produto, achamos a comissão média ponderada
-      const comissaoMediaPerc = totalSugeridoCalculado > 0 ? (somaComissaoSugerida / totalSugeridoCalculado) * 100 : 0
-      const info = verificarAlertaMargem(valorTotalAplicado, custosGlobais.custoTotal, comissaoMediaPerc)
-      setValue('lucroEstimado', info.lucroReal)
-    } else {
-      setValue('lucroEstimado', 0)
-    }
-
   }, [watchedInsumosCustomizados, watchedItens, gruposInsumos, valorHoraTrabalhada, valorTotalAplicado, produtosDB, insumosDB])
 
   const handleUpdateQty = (gIndex: number, iIndex: number, newVal: number) => {
