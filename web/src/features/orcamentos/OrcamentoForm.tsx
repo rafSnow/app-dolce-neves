@@ -218,7 +218,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
           const tempoPorUnidade = (prod.tempoPreparoMinutos || 0) / rendimento
           const tempoItem = tempoPorUnidade * item.quantidade
           tempoTotal += tempoItem
-          console.log(`Tempo item ${item.produtoNome}:`, tempoItem)
+          console.log(`Tempo item ${item.produtoNome}: rendimento=${rendimento}, tempoPreparoMinutos=${prod.tempoPreparoMinutos}, tempoItem=${tempoItem}`)
 
           // Procura se tem grupo editado específico para este produto
           const grupoEditado = gruposInsumos.find((g: any) => g.titulo === item.produtoNome)
@@ -226,9 +226,11 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
           
           let custoInsumosDesteItem = 0
           if (grupoEditado) {
+            console.log(`Itens no grupo ${item.produtoNome}:`, grupoEditado.itens)
             custoInsumosDesteItem = grupoEditado.itens.reduce((acc: number, i: any) => {
               const dbIns = insumosDB?.find(x => x.id === i.insumoId)
               const custoIns = i.quantidadeParaBaixar * (dbIns?.custoPorUnidadeMedida || 0)
+              console.log(`Insumo: ${i.insumoNome} | QtdBaixar: ${i.quantidadeParaBaixar} | CustoUnit: ${dbIns?.custoPorUnidadeMedida} | CustoIns: ${custoIns}`)
               return acc + custoIns
             }, 0)
           }
