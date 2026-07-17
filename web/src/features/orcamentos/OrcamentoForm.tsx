@@ -48,6 +48,13 @@ interface Props {
 
 export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
   const [step, setStep] = useState<1 | 2>(1)
+  const [isChangingStep, setIsChangingStep] = useState(false)
+  
+  const handleNextStep = () => {
+    setIsChangingStep(true)
+    setStep(2)
+    setTimeout(() => setIsChangingStep(false), 500)
+  }
   
   const { data: clientesDB } = useFirestoreCollection<any>('clientes')
   const { data: produtosDB } = useProdutosDinamicos()
@@ -483,11 +490,11 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
         )}
         
         {step < 2 ? (
-          <button type="button" onClick={() => setStep(s => (s + 1) as any)} className="flex-1 flex items-center justify-center gap-2 bg-dolce-rosa text-white font-bold py-3 rounded-xl hover:bg-dolce-rosa/90 transition-colors shadow-sm">
+          <button type="button" onClick={handleNextStep} className="flex-1 flex items-center justify-center gap-2 bg-dolce-rosa text-white font-bold py-3 rounded-xl hover:bg-dolce-rosa/90 transition-colors shadow-sm">
             Próximo Passo <ChevronRight className="w-5 h-5" />
           </button>
         ) : (
-          <button type="submit" className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 text-white font-bold py-3 rounded-xl hover:bg-emerald-600 transition-colors shadow-sm">
+          <button type="submit" disabled={isChangingStep} className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 text-white font-bold py-3 rounded-xl hover:bg-emerald-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
             <Save className="w-5 h-5" /> Salvar Orçamento
           </button>
         )}
