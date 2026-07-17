@@ -47,7 +47,7 @@ interface Props {
 }
 
 export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
-  const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [step, setStep] = useState<1 | 2>(1)
   
   const { data: clientesDB } = useFirestoreCollection<any>('clientes')
   const { data: produtosDB } = useProdutosDinamicos()
@@ -290,9 +290,6 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
         </button>
         <button type="button" onClick={() => setStep(2)} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm transition-all ${step === 2 ? 'bg-white text-dolce-rosa shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}>
           <Package className="w-4 h-4" /> 2. Insumos
-        </button>
-        <button type="button" onClick={() => setStep(3)} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm transition-all ${step === 3 ? 'bg-white text-dolce-rosa shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}>
-          <Calculator className="w-4 h-4" /> 3. Precificação
         </button>
       </div>
 
