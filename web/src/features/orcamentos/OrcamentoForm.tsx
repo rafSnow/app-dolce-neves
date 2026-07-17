@@ -165,16 +165,13 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
       return a.titulo.localeCompare(b.titulo)
     })
     
-    // Save generated groups to state to edit them later
-    setValue('insumosAgrupadosEditados', arr)
     return arr
-  }, [watchedItens, watchedEmbalagens, produtosDB, insumosDB])
+  }, [watchedItens, watchedEmbalagens, produtosDB, insumosDB, watch('insumosAgrupadosEditados')])
 
   // Reconstrói a lista plana de insumosNecessarios baseada nos grupos editados (Para a Baixa de Estoque e Cálculo de Custo)
   useEffect(() => {
-    const editados = watch('insumosAgrupadosEditados') || []
     const planos: any[] = []
-    editados.forEach((g: any) => {
+    gruposInsumos.forEach((g: any) => {
       g.itens.forEach((i: any) => {
         const index = planos.findIndex(p => p.insumoId === i.insumoId)
         if (index >= 0) planos[index].quantidadeParaBaixar += i.quantidadeParaBaixar
@@ -191,7 +188,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
     })
 
     setValue('insumosCustomizados', planos)
-  }, [watch('insumosAgrupadosEditados'), insumosDB])
+  }, [gruposInsumos, insumosDB])
 
   // STEP 3: Cálculos de Precificação Automáticos
   useEffect(() => {
@@ -204,14 +201,15 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
 
     watchedItens.forEach(item => {
       const prod = produtosDB.find(p => p.id === item.produtoId)
-      if (prod && prod.rendimento) {
+      if (prod) {
         // Tempo do item
-        const tempoPorUnidade = (prod.tempoPreparoMinutos || 0) / prod.rendimento
+        const rendimento = prod.rendimento || 1
+        const tempoPorUnidade = (prod.tempoPreparoMinutos || 0) / rendimento
         const tempoItem = tempoPorUnidade * item.quantidade
         tempoTotal += tempoItem
 
         // Procura se tem grupo editado específico para este produto
-        const grupoEditado = editados.find((g: any) => g.titulo === item.produtoNome)
+        const grupoEditado = gruposInsumos.find((g: any) => g.titulo === item.produtoNome)
         
         let custoInsumosDesteItem = 0
         if (grupoEditado) {
@@ -231,14 +229,12 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
     })
     
     // Soma o custo do grupo "Geral" (Embalagens, etc)
-    const grupoGeral = editados.find((g: any) => g.titulo.includes('Geral'))
+    const grupoGeral = gruposInsumos.find((g: any) => g.titulo.includes('Geral'))
     if (grupoGeral) {
       const custoGeral = grupoGeral.itens.reduce((acc: number, i: any) => {
          const dbIns = insumosDB?.find(x => x.id === i.insumoId)
          return acc + (i.quantidadeParaBaixar * (dbIns?.custoPorUnidadeMedida || 0))
       }, 0)
-      // Embalagens extras são adicionadas ao custo final sem margem adicional para simplificar,
-      // ou com markup 0.
       totalSugeridoCalculado += custoGeral
     }
 
@@ -263,7 +259,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
       setValue('lucroEstimado', 0)
     }
 
-  }, [watchedInsumosCustomizados, watchedItens, editados, valorHoraTrabalhada, valorTotalAplicado, produtosDB, insumosDB])
+  }, [watchedInsumosCustomizados, watchedItens, gruposInsumos, valorHoraTrabalhada, valorTotalAplicado, produtosDB, insumosDB])
 
   const handleUpdateQty = (gIndex: number, iIndex: number, newVal: number) => {
     const editados = [...(watch('insumosAgrupadosEditados') || gruposInsumos)]
