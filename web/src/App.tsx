@@ -4,6 +4,7 @@ import { InsumosPage } from './features/insumos/InsumosPage'
 import { ProdutosPage } from './features/produtos/ProdutosPage'
 import { ClientesPage } from './features/clientes/ClientesPage'
 import { PedidosPage } from './features/pedidos/PedidosPage'
+import { OrcamentosPage } from './features/orcamentos/OrcamentosPage'
 import { LoginPage } from './features/auth/LoginPage'
 import { AuthGuard } from './features/auth/AuthGuard'
 import { ConfiguracoesPage } from './features/configuracoes/ConfiguracoesPage'
@@ -37,6 +38,7 @@ function App() {
             <Route path="insumos" element={<InsumosPage />} />
             <Route path="produtos" element={<ProdutosPage />} />
             <Route path="clientes" element={<ClientesPage />} />
+            <Route path="orcamentos" element={<OrcamentosPage />} />
             <Route path="pedidos" element={<PedidosPage />} />
             <Route path="producao" element={<ProducaoPage />} />
             <Route path="despesas" element={<DespesasPage />} />

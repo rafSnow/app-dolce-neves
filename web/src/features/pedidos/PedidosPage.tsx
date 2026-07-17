@@ -17,7 +17,7 @@ export function PedidosPage() {
   const nomeNegocio = configDoc?.nomeNegocio || 'Confeiteira'
   
   const { add, update } = useFirestoreMutation<PedidoFormData & {id: string}>('pedidos')
-  const { executarBaixaLote } = useBaixaEstoque()
+  const { executarBaixaLote, prepararBaixaEstoque } = useBaixaEstoque()
   const { add: addLote } = useFirestoreMutation<any>('producao')
   const { data: producoes } = useFirestoreCollection<any>('producao')
   const { update: updateProducao } = useFirestoreMutation<any>('producao')
@@ -30,53 +30,6 @@ export function PedidosPage() {
   const handleOpenNew = () => {
     setEditingPedido(null)
     setIsFormOpen(true)
-  }
-
-  const prepararBaixaEstoque = (pedidoData: PedidoFormData): ItemBaixaEstoque[] => {
-    const mapaInsumos = new Map<string, number>()
-    
-    pedidoData.itens.forEach(item => {
-      const prod = produtos?.find(p => p.id === item.produtoId)
-      if (prod && prod.insumos) {
-        prod.insumos.forEach((insumoReceita: any) => {
-          const insumoDoc = insumos?.find(i => i.id === insumoReceita.insumoId)
-          const tipoEscala = insumoDoc?.tipoEscala || (insumoDoc?.escalaComQuantidade === false ? 'por_produto' : 'proporcional')
-          const atual = mapaInsumos.get(insumoReceita.insumoId) || 0
-
-          if (tipoEscala === 'por_pedido') {
-            mapaInsumos.set(insumoReceita.insumoId, Math.max(atual, insumoReceita.quantidadeUsadaReceita))
-          } else if (tipoEscala === 'por_produto') {
-            mapaInsumos.set(insumoReceita.insumoId, atual + insumoReceita.quantidadeUsadaReceita)
-          } else {
-            // proporcional
-            mapaInsumos.set(insumoReceita.insumoId, atual + (insumoReceita.quantidadeUsadaReceita * item.quantidade))
-          }
-        })
-      }
-    })
-
-    if (pedidoData.embalagensExtras) {
-      pedidoData.embalagensExtras.forEach(emb => {
-        const atual = mapaInsumos.get(emb.insumoId) || 0
-        mapaInsumos.set(emb.insumoId, atual + emb.quantidade)
-      })
-    }
-
-    const lotesParaBaixar: ItemBaixaEstoque[] = []
-    mapaInsumos.forEach((qtdNecessaria, insId) => {
-      const insumoDoc = insumos?.find(i => i.id === insId)
-      if (insumoDoc) {
-        lotesParaBaixar.push({
-          insumoId: insId,
-          insumoNome: insumoDoc.nome,
-          unidade: insumoDoc.unidadeMedida,
-          estoqueAtual: insumoDoc.quantidadeDisponivel,
-          quantidadeParaBaixar: qtdNecessaria
-        })
-      }
-    })
-
-    return lotesParaBaixar
   }
 
   const handleSubmit = async (data: PedidoFormData) => {

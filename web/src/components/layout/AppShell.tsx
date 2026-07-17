@@ -13,6 +13,7 @@ export function AppShell() {
 
   const navLinks = [
     { to: '/', label: 'Dashboard', icon: Home, showInBottomBar: true },
+    { to: '/orcamentos', label: 'Orçamentos', icon: FileText, showInBottomBar: true },
     { to: '/pedidos', label: 'Pedidos', icon: ShoppingBag, showInBottomBar: true },
     { to: '/producao', label: 'Produção', icon: ChefHat, showInBottomBar: true },
     { to: '/insumos', label: 'Insumos', icon: Package, showInBottomBar: false },
