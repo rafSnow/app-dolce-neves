@@ -116,11 +116,12 @@ const styles = StyleSheet.create({
 })
 
 interface Props {
-  pedido: PedidoFormData & { id?: string }
+  pedido: any // Using any here because it can be PedidoFormData or OrcamentoFormData
   nomeNegocio: string
+  isOrcamento?: boolean
 }
 
-export function ComprovantePDF({ pedido, nomeNegocio }: Props) {
+export function ComprovantePDF({ pedido, nomeNegocio, isOrcamento }: Props) {
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
   
@@ -136,12 +137,12 @@ export function ComprovantePDF({ pedido, nomeNegocio }: Props) {
         {/* HEADER */}
         <View style={styles.header}>
           <Text style={styles.logoText}>{nomeNegocio}</Text>
-          <Text style={styles.subtitle}>Comprovante de Pedido</Text>
+          <Text style={styles.subtitle}>{isOrcamento ? 'Orçamento de Encomenda' : 'Comprovante de Pedido'}</Text>
         </View>
 
         {/* DADOS DO CLIENTE E PEDIDO */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Detalhes do Pedido</Text>
+          <Text style={styles.sectionTitle}>{isOrcamento ? 'Detalhes do Orçamento' : 'Detalhes do Pedido'}</Text>
           <View style={styles.row}>
             <Text style={styles.label}>Cliente:</Text>
             <Text style={styles.value}>{pedido.clienteNome}</Text>
@@ -167,7 +168,7 @@ export function ComprovantePDF({ pedido, nomeNegocio }: Props) {
             <Text style={styles.col3}>Unitário</Text>
             <Text style={styles.col4}>Subtotal</Text>
           </View>
-          {pedido.itens.map((item, idx) => (
+          {pedido.itens?.map((item: any, idx: number) => (
             <View key={idx} style={styles.tableRow}>
               <Text style={styles.col1}>{item.produtoNome}</Text>
               <Text style={styles.col2}>{item.quantidade}</Text>
@@ -183,14 +184,18 @@ export function ComprovantePDF({ pedido, nomeNegocio }: Props) {
             <Text style={styles.totalLabel}>Subtotal Itens:</Text>
             <Text style={styles.totalValue}>{formatCurrency(pedido.valorTotal)}</Text>
           </View>
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Sinal (Pago):</Text>
-            <Text style={styles.totalValue}>{formatCurrency(pedido.pagamentos?.sinal?.valor || 0)}</Text>
-          </View>
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Restante (Pendente):</Text>
-            <Text style={styles.totalValue}>{formatCurrency(pedido.pagamentos?.restante?.valor || 0)}</Text>
-          </View>
+          {!isOrcamento && (
+            <>
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Sinal (Pago):</Text>
+                <Text style={styles.totalValue}>{formatCurrency(pedido.pagamentos?.sinal?.valor || 0)}</Text>
+              </View>
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Restante (Pendente):</Text>
+                <Text style={styles.totalValue}>{formatCurrency(pedido.pagamentos?.restante?.valor || 0)}</Text>
+              </View>
+            </>
+          )}
           <View style={[styles.totalRow, { marginTop: 10 }]}>
             <Text style={[styles.totalLabel, { fontWeight: 'bold', color: '#3f3f46' }]}>Total Geral:</Text>
             <Text style={styles.grandTotalValue}>{formatCurrency(pedido.valorTotal)}</Text>

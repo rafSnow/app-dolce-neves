@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useFirestoreCollection, useFirestoreMutation } from '@/hooks/useFirestore'
-import { Search, Plus, FileText, CheckCircle, X, DollarSign, Calendar, MessageCircle, Ban, Pencil, PackageOpen, ChevronDown } from 'lucide-react'
+import { Search, Plus, FileText, CheckCircle, X, DollarSign, Calendar, MessageCircle, Ban, Pencil, PackageOpen, ChevronDown, Download } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
+import { pdf } from '@react-pdf/renderer'
+import { ComprovantePDF } from '@/features/pedidos/ComprovantePDF'
 import { OrcamentoForm, OrcamentoFormData } from './OrcamentoForm'
 import { useBaixaEstoque } from '@/features/pedidos/useBaixaEstoque'
 import { PedidoFormData } from '@/features/pedidos/PedidoForm'
@@ -105,18 +107,32 @@ export function OrcamentosPage() {
     }
   }
 
-  const sendWhatsApp = (orc: any) => {
-    let msg = `*Orçamento - ${nomeNegocio}*\n\n`
-    msg += `Olá ${orc.clienteNome},\nSegue o seu orçamento para o dia ${new Date(orc.dataEntrega).toLocaleDateString()}:\n\n`
-    msg += `*Itens:*\n`
-    orc.itens.forEach((i: any) => {
-      msg += `- ${i.quantidade}x ${i.produtoNome}\n`
+  const sendWhatsApp = (orcamento: OrcamentoFormData) => {
+    let text = `Olá ${orcamento.clienteNome}!\nAqui está o seu orçamento:\n\n`
+    orcamento.itens.forEach(item => {
+      text += `• ${item.quantidade}x ${item.produtoNome} - R$ ${item.valorItem?.toFixed(2) || '0.00'}\n`
     })
-    msg += `\n*Valor Total Sugerido:* R$ ${orc.valorTotal.toFixed(2)}\n\n`
-    msg += `Fico à disposição para dúvidas ou ajustes!`
+    text += `\n*Valor Total Sugerido: R$ ${orcamento.valorTotal?.toFixed(2) || '0.00'}*`
     
-    const url = `https://wa.me/?text=${encodeURIComponent(msg)}`
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`
     window.open(url, '_blank')
+  }
+
+  const handleGerarPDF = async (orc: OrcamentoFormData & {id: string}) => {
+    try {
+      const blob = await pdf(<ComprovantePDF pedido={orc} nomeNegocio={nomeNegocio} isOrcamento={true} />).toBlob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Orcamento-${orc.clienteNome}-${orc.id.slice(-4)}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Erro ao gerar PDF', error)
+      alert('Não foi possível gerar o PDF.')
+    }
   }
 
   const filtered = (orcamentos || []).filter(o => 
@@ -360,13 +376,22 @@ export function OrcamentosPage() {
               )}
 
               <div className="p-3 border-t border-gray-50 bg-gray-50/30 flex justify-between items-center gap-2 flex-wrap">
-                <button
-                  onClick={() => sendWhatsApp(orc)}
-                  className="p-2.5 flex items-center justify-center text-sm font-semibold text-emerald-600 hover:bg-emerald-100 rounded-xl transition-colors bg-emerald-50 shadow-sm"
-                  title="Enviar por WhatsApp"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => sendWhatsApp(orc)}
+                    className="p-2.5 flex items-center justify-center text-sm font-semibold text-emerald-600 hover:bg-emerald-100 rounded-xl transition-colors bg-emerald-50 shadow-sm"
+                    title="Enviar por WhatsApp"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleGerarPDF(orc)}
+                    className="p-2.5 flex items-center justify-center text-sm font-semibold text-blue-600 hover:bg-blue-100 rounded-xl transition-colors bg-blue-50 shadow-sm"
+                    title="Baixar PDF"
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
+                </div>
                 <div className="flex flex-1 justify-end gap-2">
                   <button
                     onClick={() => { setEditingOrcamento(orc); setIsFormOpen(true) }}
