@@ -295,17 +295,15 @@ export function OrcamentosPage() {
                   </div>
                 )}
 
-                {/* PRECIFICAÇÃO MÁGICA DO ORÇAMENTO */}
-                <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100 mt-2">
-                  <h4 className="font-bold text-sm text-emerald-800 mb-3 flex items-center gap-1.5 uppercase tracking-wide">
-                    <DollarSign className="w-4 h-4" /> Precificação Mágica
-                  </h4>
-                  <div className="grid grid-cols-2 gap-3 mb-3">
-                    <div className="bg-white p-3 rounded-xl shadow-sm border border-emerald-100/50 relative group cursor-help">
-                      <div className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-wider mb-0.5">Custo de Produção</div>
-                      <div className="text-lg font-black text-emerald-600">
-                        R$ {((orc.custoInsumosTotal || 0) + (orc.custoMaoDeObraTotal || 0)).toFixed(2)}
-                      </div>
+                {/* PRECIFICAÇÃO MÁGICA DO ORÇAMENTO (VISUAL IDÊNTICO À FT) */}
+                <div className="bg-emerald-50/50 p-5 rounded-3xl border border-emerald-100 mt-2">
+                  <h4 className="font-bold text-xl text-dolce-marrom mb-5">Precificação Mágica</h4>
+                  
+                  {/* Top Indicators */}
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-rose-100 relative group cursor-help">
+                      <div className="text-[10px] sm:text-xs font-bold text-rose-600/70 uppercase tracking-wider mb-1">Custo Total de Produção</div>
+                      <div className="text-xl sm:text-2xl font-black text-rose-600">R$ {((orc.custoInsumosTotal || 0) + (orc.custoMaoDeObraTotal || 0)).toFixed(2)}</div>
                       
                       {/* Tooltip Hover for breakdown */}
                       <div className="absolute hidden group-hover:block bottom-full left-0 mb-2 w-48 bg-gray-800 text-white text-xs p-2 rounded-lg shadow-xl z-50">
@@ -319,18 +317,27 @@ export function OrcamentosPage() {
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="bg-emerald-600 p-3 rounded-xl shadow-sm border border-emerald-700 text-white">
-                      <div className="text-[10px] font-bold text-emerald-100 uppercase tracking-wider mb-0.5">Valor Sugerido</div>
-                      <div className="text-lg font-black text-white">
-                        R$ {(orc.valorTotal || 0).toFixed(2)}
-                      </div>
+                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-blue-200 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-16 h-16 bg-blue-50 rounded-bl-full -mr-4 -mt-4 opacity-50"></div>
+                      <div className="text-[10px] sm:text-xs font-bold text-blue-600/70 uppercase tracking-wider mb-1">Qtd Itens Cotados</div>
+                      <div className="text-xl sm:text-2xl font-black text-blue-700 relative z-10">{orc.itens?.length || 0} produtos</div>
                     </div>
                   </div>
-                  
-                  <div className="flex justify-between items-center px-1">
-                    <span className="text-xs font-bold text-emerald-700/60 uppercase">Lucro Estimado Bruto</span>
-                    <span className="text-sm font-black text-emerald-700">R$ {(orc.lucroEstimado || 0).toFixed(2)}</span>
+
+                  {/* Final Price Block */}
+                  <div className="bg-emerald-600 p-5 rounded-2xl shadow-[0_8px_30px_rgba(5,150,105,0.3)] text-white relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
+                    
+                    <div className="flex flex-col sm:flex-row justify-between items-center sm:items-end gap-3">
+                      <div>
+                        <div className="text-emerald-100 font-medium text-sm mb-1">Valor Final Sugerido</div>
+                        <div className="text-3xl sm:text-4xl font-black tracking-tight">R$ {(orc.valorTotal || 0).toFixed(2)}</div>
+                      </div>
+                      <div className="bg-white/20 px-4 py-2 rounded-xl backdrop-blur-md border border-white/10 text-center sm:text-right w-full sm:w-auto mt-2 sm:mt-0">
+                        <div className="text-[10px] text-emerald-100 uppercase tracking-widest font-bold mb-0.5">Lucro Bruto</div>
+                        <div className="text-xl font-bold">R$ {(orc.lucroEstimado || 0).toFixed(2)}</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
