@@ -120,12 +120,17 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
              const existingIdx = arr.findIndex(x => x.insumoId === ins.insumoId)
              if (existingIdx >= 0) arr[existingIdx].quantidadeParaBaixar += qty
              else {
+               let custoUnidade = insumoDoc?.custoPorUnidadeMedida
+               if (custoUnidade === undefined && insumoDoc) {
+                 custoUnidade = insumoDoc.pesoVolumeTotal > 0 ? (insumoDoc.precoCompra / insumoDoc.pesoVolumeTotal) : 0
+               }
+               
                arr.push({
                  insumoId: ins.insumoId,
                  insumoNome: insumoDoc?.nome || '',
                  quantidadeParaBaixar: qty,
                  unidade: insumoDoc?.unidadeMedida || '',
-                 custoProporcionalAtual: insumoDoc?.custoPorUnidadeMedida ? (insumoDoc.custoPorUnidadeMedida * qty) : 0
+                 custoProporcionalAtual: custoUnidade ? (custoUnidade * qty) : 0
                })
              }
           }
@@ -146,12 +151,17 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
       mapGeral.forEach((qty, id) => {
         const insumoDoc = insumosDB.find(i => i.id === id)
         if (insumoDoc) {
-           arrGeral.push({
+            let custoUnidade = insumoDoc.custoPorUnidadeMedida
+            if (custoUnidade === undefined && insumoDoc) {
+              custoUnidade = insumoDoc.pesoVolumeTotal > 0 ? (insumoDoc.precoCompra / insumoDoc.pesoVolumeTotal) : 0
+            }
+            
+            arrGeral.push({
              insumoId: id,
              insumoNome: insumoDoc.nome,
              quantidadeParaBaixar: qty,
              unidade: insumoDoc.unidadeMedida,
-             custoProporcionalAtual: insumoDoc.custoPorUnidadeMedida ? (insumoDoc.custoPorUnidadeMedida * qty) : 0
+             custoProporcionalAtual: custoUnidade ? (custoUnidade * qty) : 0
            })
         }
       })
@@ -182,8 +192,14 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
     // Recalcula custos dos insumos planos
     planos.forEach(p => {
       const dbIns = insumosDB?.find(i => i.id === p.insumoId)
-      if (dbIns && dbIns.custoPorUnidadeMedida) {
-        p.custoProporcionalAtual = p.quantidadeParaBaixar * dbIns.custoPorUnidadeMedida
+      if (dbIns) {
+        let custoUnidade = dbIns.custoPorUnidadeMedida
+        if (custoUnidade === undefined) {
+          custoUnidade = dbIns.pesoVolumeTotal > 0 ? (dbIns.precoCompra / dbIns.pesoVolumeTotal) : 0
+        }
+        if (custoUnidade) {
+          p.custoProporcionalAtual = p.quantidadeParaBaixar * custoUnidade
+        }
       }
     })
 
@@ -192,16 +208,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
 
   // STEP 3: Cálculos de Precificação Automáticos
   useEffect(() => {
-    console.log('--- INICIO CALCULO PRECIFICAÇÃO ---')
-    console.log('produtosDB:', produtosDB)
-    console.log('insumosDB:', insumosDB)
-    console.log('gruposInsumos:', gruposInsumos)
-    console.log('watchedItens:', watchedItens)
-
-    if (!produtosDB) {
-      console.log('Abortado: produtosDB não carregado.')
-      return
-    }
+    if (!produtosDB) return
     
     // Calcula tempo total
     let tempoTotal = 0
@@ -211,36 +218,33 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
     try {
       watchedItens.forEach(item => {
         const prod = produtosDB.find(p => p.id === item.produtoId)
-        console.log('Processando item:', item.produtoNome, 'Prod encontrado:', !!prod)
         if (prod) {
           // Tempo do item
           const rendimento = prod.rendimento || 1
           const tempoPorUnidade = (prod.tempoPreparoMinutos || 0) / rendimento
           const tempoItem = tempoPorUnidade * item.quantidade
           tempoTotal += tempoItem
-          console.log(`Tempo item ${item.produtoNome}: rendimento=${rendimento}, tempoPreparoMinutos=${prod.tempoPreparoMinutos}, tempoItem=${tempoItem}`)
 
           // Procura se tem grupo editado específico para este produto
           const grupoEditado = gruposInsumos.find((g: any) => g.titulo === item.produtoNome)
-          console.log(`Grupo editado para ${item.produtoNome}:`, !!grupoEditado)
           
           let custoInsumosDesteItem = 0
           if (grupoEditado) {
-            console.log(`Itens no grupo ${item.produtoNome}:`, grupoEditado.itens)
             custoInsumosDesteItem = grupoEditado.itens.reduce((acc: number, i: any) => {
               const dbIns = insumosDB?.find(x => x.id === i.insumoId)
-              const custoIns = i.quantidadeParaBaixar * (dbIns?.custoPorUnidadeMedida || 0)
-              console.log(`Insumo: ${i.insumoNome} | QtdBaixar: ${i.quantidadeParaBaixar} | CustoUnit: ${dbIns?.custoPorUnidadeMedida} | CustoIns: ${custoIns}`)
+              let custoUnidade = dbIns?.custoPorUnidadeMedida
+              if (custoUnidade === undefined && dbIns) {
+                 custoUnidade = dbIns.pesoVolumeTotal > 0 ? (dbIns.precoCompra / dbIns.pesoVolumeTotal) : 0
+              }
+              const custoIns = i.quantidadeParaBaixar * (custoUnidade || 0)
               return acc + custoIns
             }, 0)
           }
-          console.log(`Custo Insumos ${item.produtoNome}:`, custoInsumosDesteItem)
 
           const custoMaoDeObraItem = tempoItem * (valorHoraTrabalhada / 60)
           const custoTotalItem = custoInsumosDesteItem + custoMaoDeObraItem
           
           const sugeridoItem = calcularPrecoVendaSugerido(custoTotalItem, prod.margemLucro || 0, prod.comissaoPerc || 0)
-          console.log(`Sugerido item ${item.produtoNome}:`, sugeridoItem)
           totalSugeridoCalculado += sugeridoItem
           somaComissaoSugerida += sugeridoItem * ((prod.comissaoPerc || 0) / 100)
         }
@@ -248,17 +252,18 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
       
       // Soma o custo do grupo "Geral" (Embalagens, etc)
       const grupoGeral = gruposInsumos.find((g: any) => g.titulo?.includes('Geral'))
-      console.log('Grupo Geral encontrado:', !!grupoGeral)
       if (grupoGeral) {
         const custoGeral = grupoGeral.itens.reduce((acc: number, i: any) => {
            const dbIns = insumosDB?.find(x => x.id === i.insumoId)
-           return acc + (i.quantidadeParaBaixar * (dbIns?.custoPorUnidadeMedida || 0))
+           let custoUnidade = dbIns?.custoPorUnidadeMedida
+           if (custoUnidade === undefined && dbIns) {
+              custoUnidade = dbIns.pesoVolumeTotal > 0 ? (dbIns.precoCompra / dbIns.pesoVolumeTotal) : 0
+           }
+           return acc + (i.quantidadeParaBaixar * (custoUnidade || 0))
         }, 0)
-        console.log('Custo Geral (Embalagens):', custoGeral)
         totalSugeridoCalculado += custoGeral
       }
 
-      console.log('Tempo Estimado Total:', tempoTotal)
       setValue('tempoEstimadoTotal', tempoTotal)
 
       // Custo Total Geral (Insumos + Mão de obra global)
