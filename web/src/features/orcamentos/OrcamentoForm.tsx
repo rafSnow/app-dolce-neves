@@ -3,6 +3,7 @@ import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useState, useMemo } from 'react'
 import { useFirestoreCollection } from '@/hooks/useFirestore'
+import { useProdutosDinamicos } from '@/hooks/useProdutosDinamicos'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { useCalculadoraPrecificacao } from '@/features/produtos/useCalculadoraPrecificacao'
 import { ShoppingBag, ChevronRight, Package, Calculator, Save, AlertCircle, Plus, X } from 'lucide-react'
@@ -49,7 +50,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1)
   
   const { data: clientesDB } = useFirestoreCollection<any>('clientes')
-  const { data: produtosDB } = useFirestoreCollection<any>('produtos')
+  const { data: produtosDB } = useProdutosDinamicos()
   const { data: insumosDB } = useFirestoreCollection<any>('insumos')
   
   const { register, handleSubmit, control, watch, setValue, getValues, formState: { errors } } = useForm<OrcamentoFormData>({
@@ -227,10 +228,8 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
       total += (item.valorItem || 0)
       if (produtosDB) {
         const prod = produtosDB.find(p => p.id === item.produtoId)
-        if (prod) {
-          const rendimento = prod.rendimento || 1
-          const tempoPorUnidade = (prod.tempoPreparoMinutos || 0) / rendimento
-          tempoTotal += tempoPorUnidade * item.quantidade
+        if (prod && prod.tempoEstimadoMinutos) {
+          tempoTotal += prod.tempoEstimadoMinutos * (item.quantidade || 1)
         }
       }
     })
