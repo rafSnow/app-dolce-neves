@@ -52,7 +52,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
   const { data: produtosDB } = useFirestoreCollection<any>('produtos')
   const { data: insumosDB } = useFirestoreCollection<any>('insumos')
   
-  const { register, handleSubmit, control, watch, setValue, formState: { errors } } = useForm<OrcamentoFormData>({
+  const { register, handleSubmit, control, watch, setValue, getValues, formState: { errors } } = useForm<OrcamentoFormData>({
     resolver: zodResolver(orcamentoSchema),
     defaultValues: initialData || {
       status: 'Aberto',
@@ -91,11 +91,8 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
 
   // STEP 2: Lógica de Agrupamento Dinâmico de Insumos (igual Produção)
   const gruposInsumos = useMemo(() => {
-    // Se já existem editados, usamos eles
-    const editados = watch('insumosAgrupadosEditados')
-    if (editados && editados.length > 0) return editados
-
     if (!produtosDB || !insumosDB) return []
+    const editados = watch('insumosAgrupadosEditados') || []
     const gruposMap = new Map<string, any[]>()
     const mapGeral = new Map<string, number>()
 
@@ -175,6 +172,21 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
       return a.titulo.localeCompare(b.titulo)
     })
     
+    // Mescla com as edições do usuário (se houver)
+    if (editados.length > 0) {
+      arr.forEach(grupo => {
+        const editadoGrupo = editados.find((g: any) => g.titulo === grupo.titulo)
+        if (editadoGrupo) {
+          grupo.itens.forEach((item: any) => {
+            const editadoItem = editadoGrupo.itens.find((i: any) => i.insumoId === item.insumoId)
+            if (editadoItem && editadoItem.quantidadeParaBaixar !== undefined) {
+              item.quantidadeParaBaixar = editadoItem.quantidadeParaBaixar
+            }
+          })
+        }
+      })
+    }
+    
     return arr
   }, [watchedItens, watchedEmbalagens, produtosDB, insumosDB, watch('insumosAgrupadosEditados')])
 
@@ -246,8 +258,20 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
   }, [JSON.stringify(watchedItens), JSON.stringify(watchedEmbalagens), produtosDB, insumosDB, setValue])
 
   const handleUpdateQty = (gIndex: number, iIndex: number, newVal: number) => {
-    const editados = [...(watch('insumosAgrupadosEditados') || gruposInsumos)]
-    editados[gIndex].itens[iIndex].quantidadeParaBaixar = newVal
+    // Usa getValues para ter o estado mais atual sem depender de closure stale
+    const editados = [...(getValues('insumosAgrupadosEditados') || gruposInsumos)]
+    if (!editados[gIndex]) return
+
+    // Deep clone para evitar mutação direta
+    editados[gIndex] = {
+      ...editados[gIndex],
+      itens: [...editados[gIndex].itens]
+    }
+    editados[gIndex].itens[iIndex] = {
+      ...editados[gIndex].itens[iIndex],
+      quantidadeParaBaixar: newVal
+    }
+
     setValue('insumosAgrupadosEditados', editados)
   }
 
