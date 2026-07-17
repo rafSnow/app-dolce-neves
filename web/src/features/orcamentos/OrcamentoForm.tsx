@@ -240,6 +240,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
   const clientesOptions = clientesDB?.map(c => ({ value: c.id, label: c.nome })) || []
   const produtosOptions = produtosDB?.map(p => ({ value: p.id, label: p.nome })) || []
   const insumosOptions = insumosDB?.map(i => ({ value: i.id, label: i.nome })) || []
+  const embalagensOptions = insumosDB?.filter(i => i.categoria === 'Embalagem').map(i => ({ value: i.id, label: i.nome })) || []
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full bg-white relative">
@@ -334,7 +335,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
             </div>
 
             <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-4">
-              <h3 className="font-bold text-dolce-marrom border-b border-gray-200 pb-2">Embalagens Extras / Avulsas</h3>
+              <h3 className="font-bold text-dolce-marrom border-b border-gray-200 pb-2">Embalagens</h3>
               {embalagemFields.map((field, index) => (
                 <div key={field.id} className="bg-white p-3 rounded-xl border border-gray-200 flex gap-3 relative group shadow-sm">
                   <div className="flex-1">
@@ -343,7 +344,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
                       name={`embalagensExtras.${index}.insumoId`}
                       render={({ field: f }) => (
                         <SearchableSelect
-                          options={insumosOptions}
+                          options={embalagensOptions}
                           value={f.value || ''}
                           onChange={(val) => {
                             f.onChange(val)
