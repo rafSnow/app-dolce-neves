@@ -293,7 +293,8 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
 
   const handleUpdateQty = (gIndex: number, iIndex: number, newVal: number) => {
     // Usa getValues para ter o estado mais atual sem depender de closure stale
-    const editados = [...(getValues('insumosAgrupadosEditados') || gruposInsumos)]
+    const currentEditados = getValues('insumosAgrupadosEditados')
+    const editados = currentEditados && currentEditados.length > 0 ? [...currentEditados] : [...gruposInsumos]
     if (!editados[gIndex]) return
 
     // Deep clone para evitar mutação direta
