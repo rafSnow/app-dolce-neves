@@ -127,7 +127,7 @@ export function OrcamentosPage() {
   if (isLoading) return <div className="p-8 text-center text-dolce-marrom/50">Carregando orçamentos...</div>
 
   return (
-    <div className="flex flex-col gap-6 md:gap-8 min-h-screen">
+    <div className="flex flex-col gap-6 md:gap-8 pb-24 md:pb-0 min-h-screen">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl md:text-3xl font-bold text-dolce-marrom tracking-tight">Orçamentos</h2>
@@ -270,7 +270,7 @@ export function OrcamentosPage() {
       {/* FAB Mobile */}
       <button 
         onClick={handleOpenNew}
-        className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-2xl shadow-lg flex items-center justify-center hover:bg-blue-700 active:scale-95 transition-all z-30"
+        className="md:hidden fixed bottom-20 right-6 w-14 h-14 bg-blue-600 text-white rounded-2xl shadow-lg flex items-center justify-center hover:bg-blue-700 active:scale-95 transition-all z-30"
       >
         <Plus className="w-6 h-6" />
       </button>
