@@ -34,6 +34,7 @@ const orcamentoSchema = z.object({
   custoInsumosTotal: z.number().min(0),
   custoMaoDeObraTotal: z.number().min(0),
   lucroEstimado: z.number(),
+  lucroInsumosExtrasPercentual: z.number().min(0).optional(),
   valorTotalSugerido: z.number().min(0),
   valorTotal: z.number().min(0) // Valor final aplicado
 })
@@ -75,6 +76,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
       custoInsumosTotal: 0,
       custoMaoDeObraTotal: 0,
       lucroEstimado: 0,
+      lucroInsumosExtrasPercentual: 0,
       valorTotalSugerido: 0,
       valorTotal: 0,
       dataEntrega: new Date().toISOString().split('T')[0]
@@ -123,8 +125,10 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
             mapGeral.set(ins.insumoId, Math.max(atual, qty))
           } else {
              const existingIdx = arr.findIndex(x => x.insumoId === ins.insumoId)
-             if (existingIdx >= 0) arr[existingIdx].quantidadeParaBaixar += qty
-             else {
+             if (existingIdx >= 0) {
+               arr[existingIdx].quantidadeParaBaixar += qty
+               arr[existingIdx].quantidadeOriginal += qty
+             } else {
                let custoUnidade = insumoDoc?.custoPorUnidadeMedida
                if (custoUnidade === undefined && insumoDoc) {
                  custoUnidade = insumoDoc.pesoVolumeTotal > 0 ? (insumoDoc.precoCompra / insumoDoc.pesoVolumeTotal) : 0
@@ -134,6 +138,8 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
                  insumoId: ins.insumoId,
                  insumoNome: insumoDoc?.nome || '',
                  quantidadeParaBaixar: qty,
+                 quantidadeOriginal: qty,
+                 custoUnidade: custoUnidade || 0,
                  unidade: insumoDoc?.unidadeMedida || '',
                  custoProporcionalAtual: custoUnidade ? (custoUnidade * qty) : 0
                })
@@ -165,6 +171,8 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
              insumoId: id,
              insumoNome: insumoDoc.nome,
              quantidadeParaBaixar: qty,
+             quantidadeOriginal: qty,
+             custoUnidade: custoUnidade || 0,
              unidade: insumoDoc.unidadeMedida,
              custoProporcionalAtual: custoUnidade ? (custoUnidade * qty) : 0
            })
@@ -231,6 +239,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
     let total = 0
     let tempoTotal = 0
 
+    // 1. Soma dos produtos originais
     watchedItens.forEach(item => {
       total += (item.valorItem || 0)
       if (produtosDB) {
@@ -241,6 +250,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
       }
     })
 
+    // 2. Soma das Embalagens Extras
     if (insumosDB) {
       watchedEmbalagens.forEach(emb => {
         if (emb.insumoId && emb.quantidade) {
@@ -251,6 +261,24 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
           }
         }
       })
+    }
+    
+    // 3. Acrescenta custo e lucro de Insumos Extras
+    let custoInsumosExtras = 0
+    const lucroPercentualExtras = watch('lucroInsumosExtrasPercentual') || 0
+    
+    gruposInsumos.forEach(grupo => {
+      grupo.itens.forEach(item => {
+        const diff = (item.quantidadeParaBaixar || 0) - (item.quantidadeOriginal || 0)
+        // Somente extra, nunca a menos (se pediu pra tirar, nao desconta)
+        if (diff > 0) {
+          custoInsumosExtras += diff * (item.custoUnidade || 0)
+        }
+      })
+    })
+
+    if (custoInsumosExtras > 0) {
+      total += custoInsumosExtras * (1 + lucroPercentualExtras / 100)
     }
 
     setValue('valorTotal', total)
@@ -435,9 +463,22 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
           <div className="space-y-6">
             <div className="bg-dolce-rosa-claro/20 p-4 rounded-xl border border-dolce-rosa-claro/50 flex items-start gap-3 text-dolce-marrom/80 text-sm font-medium">
               <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-dolce-rosa" />
-              <p>Aqui você pode alterar a quantidade de insumos que serão efetivamente usados neste pedido. A precificação será recalculada baseada nesses novos pesos.</p>
+              <p>Aqui você pode alterar a quantidade de insumos que serão efetivamente usados neste pedido. Adições de insumos aumentarão o valor final baseadas na margem definida abaixo. Reduções não alteram o valor.</p>
             </div>
             
+            <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm flex items-center justify-between">
+              <div>
+                <h4 className="font-bold text-dolce-marrom">Lucro sobre Insumos Extras (%)</h4>
+                <p className="text-xs text-gray-500">Quanto aplicar de margem em cima dos ingredientes adicionais.</p>
+              </div>
+              <input 
+                type="number" 
+                min="0"
+                {...register('lucroInsumosExtrasPercentual', { valueAsNumber: true })} 
+                className="w-24 bg-gray-50 border border-gray-300 rounded-lg p-2 text-right font-bold text-dolce-marrom focus:ring-2 focus:ring-dolce-rosa"
+              />
+            </div>
+
             {gruposInsumos.map((grupo: any, gIndex: number) => (
               <div key={gIndex} className="bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm">
                 <div className="bg-gray-100 px-4 py-2 font-bold text-sm text-dolce-marrom uppercase border-b border-gray-200">
