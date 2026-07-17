@@ -79,11 +79,13 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
   const watchedItens = watch('itens') || []
   const watchedEmbalagens = watch('embalagensExtras') || []
   const watchedInsumosCustomizados = watch('insumosCustomizados') || []
+  const editados = watch('insumosAgrupadosEditados') || []
   
-  const markupPercentual = watch('markupPercentual')
-  const comissaoPercentual = watch('comissaoPercentual')
-  const valorHoraTrabalhada = watch('valorHoraTrabalhada')
   const valorTotalAplicado = watch('valorTotal')
+  
+  const { data: configs } = useFirestoreCollection<any>('configuracoes')
+  const configDoc = configs?.find(c => c.id === 'global') || configs?.[0]
+  const valorHoraTrabalhada = configDoc?.valorHoraTrabalhada || 0
   
   const { calcularCustoTotalReceita, calcularPrecoVendaSugerido, verificarAlertaMargem } = useCalculadoraPrecificacao()
 
@@ -191,44 +193,77 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
     setValue('insumosCustomizados', planos)
   }, [watch('insumosAgrupadosEditados'), insumosDB])
 
-  // STEP 3: Cálculos de Precificação Mágica
+  // STEP 3: Cálculos de Precificação Automáticos
   useEffect(() => {
     if (!produtosDB) return
     
     // Calcula tempo total
     let tempoTotal = 0
+    let totalSugeridoCalculado = 0
+    let somaComissaoSugerida = 0
+
     watchedItens.forEach(item => {
       const prod = produtosDB.find(p => p.id === item.produtoId)
       if (prod && prod.rendimento) {
-        // Regra de três simples para estimar o tempo baseado no rendimento da FT
+        // Tempo do item
         const tempoPorUnidade = (prod.tempoPreparoMinutos || 0) / prod.rendimento
-        tempoTotal += (tempoPorUnidade * item.quantidade)
+        const tempoItem = tempoPorUnidade * item.quantidade
+        tempoTotal += tempoItem
+
+        // Procura se tem grupo editado específico para este produto
+        const grupoEditado = editados.find((g: any) => g.titulo === item.produtoNome)
+        
+        let custoInsumosDesteItem = 0
+        if (grupoEditado) {
+          custoInsumosDesteItem = grupoEditado.itens.reduce((acc: number, i: any) => {
+            const dbIns = insumosDB?.find(x => x.id === i.insumoId)
+            return acc + (i.quantidadeParaBaixar * (dbIns?.custoPorUnidadeMedida || 0))
+          }, 0)
+        }
+
+        const custoMaoDeObraItem = tempoItem * (valorHoraTrabalhada / 60)
+        const custoTotalItem = custoInsumosDesteItem + custoMaoDeObraItem
+        
+        const sugeridoItem = calcularPrecoVendaSugerido(custoTotalItem, prod.margemLucro || 0, prod.comissaoPerc || 0)
+        totalSugeridoCalculado += sugeridoItem
+        somaComissaoSugerida += sugeridoItem * ((prod.comissaoPerc || 0) / 100)
       }
     })
+    
+    // Soma o custo do grupo "Geral" (Embalagens, etc)
+    const grupoGeral = editados.find((g: any) => g.titulo.includes('Geral'))
+    if (grupoGeral) {
+      const custoGeral = grupoGeral.itens.reduce((acc: number, i: any) => {
+         const dbIns = insumosDB?.find(x => x.id === i.insumoId)
+         return acc + (i.quantidadeParaBaixar * (dbIns?.custoPorUnidadeMedida || 0))
+      }, 0)
+      // Embalagens extras são adicionadas ao custo final sem margem adicional para simplificar,
+      // ou com markup 0.
+      totalSugeridoCalculado += custoGeral
+    }
+
     setValue('tempoEstimadoTotal', tempoTotal)
 
-    // Calcula custo dos insumos (já com edições)
-    const custoInsumos = watchedInsumosCustomizados.reduce((acc: number, item: any) => acc + (item.custoProporcionalAtual || 0), 0)
-    setValue('custoInsumosTotal', custoInsumos)
+    // Custo Total Geral (Insumos + Mão de obra global)
+    const custoInsumosGeral = watchedInsumosCustomizados.reduce((acc: number, item: any) => acc + (item.custoProporcionalAtual || 0), 0)
+    setValue('custoInsumosTotal', custoInsumosGeral)
 
-    // Custo Total
-    const custos = calcularCustoTotalReceita(watchedInsumosCustomizados, tempoTotal, valorHoraTrabalhada)
-    setValue('custoMaoDeObraTotal', custos.custoMaoDeObra)
+    const custosGlobais = calcularCustoTotalReceita(watchedInsumosCustomizados, tempoTotal, valorHoraTrabalhada)
+    setValue('custoMaoDeObraTotal', custosGlobais.custoMaoDeObra)
     
-    // Sugestão de Preço (usando custo unitário fictício de 1 por causa do todo)
-    // Para simplificar, o "custoUnitario" é o Custo Total do Orçamento. E calculamos a sugestão final.
-    const precoSugerido = calcularPrecoVendaSugerido(custos.custoTotal, markupPercentual, comissaoPercentual)
-    setValue('valorTotalSugerido', precoSugerido)
+    setValue('valorTotalSugerido', totalSugeridoCalculado)
 
     // Lucro e alertas com base no valorTotal Aplicado
     if (valorTotalAplicado > 0) {
-      const info = verificarAlertaMargem(valorTotalAplicado, custos.custoTotal, comissaoPercentual)
+      // Como a comissão pode variar por produto, achamos a comissão média ponderada
+      const comissaoMediaPerc = totalSugeridoCalculado > 0 ? (somaComissaoSugerida / totalSugeridoCalculado) * 100 : 0
+      const info = verificarAlertaMargem(valorTotalAplicado, custosGlobais.custoTotal, comissaoMediaPerc)
       setValue('lucroEstimado', info.lucroReal)
     } else {
       setValue('lucroEstimado', 0)
     }
 
-  }, [watchedInsumosCustomizados, watchedItens, markupPercentual, comissaoPercentual, valorHoraTrabalhada, valorTotalAplicado, produtosDB])
+  }, [watchedInsumosCustomizados, watchedItens, editados, valorHoraTrabalhada, valorTotalAplicado, produtosDB, insumosDB])
 
   const handleUpdateQty = (gIndex: number, iIndex: number, newVal: number) => {
     const editados = [...(watch('insumosAgrupadosEditados') || gruposInsumos)]
@@ -431,21 +466,10 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
             </div>
 
             <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 space-y-4">
-              <h3 className="font-bold text-dolce-marrom border-b border-gray-200 pb-2">Definir Margens</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-dolce-marrom mb-1.5">Valor da Hora (R$)</label>
-                  <input type="number" step="0.5" {...register('valorHoraTrabalhada', { valueAsNumber: true })} className="w-full border border-gray-300 rounded-lg p-2 font-medium" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-dolce-marrom mb-1.5">% Comissão</label>
-                  <input type="number" step="0.5" {...register('comissaoPercentual', { valueAsNumber: true })} className="w-full border border-gray-300 rounded-lg p-2 font-medium" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-dolce-marrom mb-1.5">% Margem Lucro</label>
-                  <input type="number" step="0.5" {...register('markupPercentual', { valueAsNumber: true })} className="w-full border border-gray-300 rounded-lg p-2 font-medium" />
-                </div>
-              </div>
+              <h3 className="font-bold text-dolce-marrom border-b border-gray-200 pb-2">Informações de Margem</h3>
+              <p className="text-sm text-gray-500">
+                O cálculo de precificação está utilizando automaticamente o <strong>Valor da Hora Trabalhada (R$ {valorHoraTrabalhada.toFixed(2)})</strong> configurado globalmente, além da <strong>Margem de Lucro</strong> e <strong>Comissão</strong> configuradas individualmente em cada Produto selecionado no Passo 1.
+              </p>
             </div>
 
             <div className="bg-blue-50 p-5 rounded-2xl border border-blue-200 space-y-4 shadow-sm">
