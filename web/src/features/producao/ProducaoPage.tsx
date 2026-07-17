@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react'
 import { useFirestoreCollection, useFirestoreMutation } from '@/hooks/useFirestore'
 import { useBaixaEstoque } from '../pedidos/useBaixaEstoque'
-import { ChefHat, CheckCircle, Clock, Flame, Info, CheckSquare, PackageOpen, Calendar, Search, Play } from 'lucide-react'
+import { ChefHat, CheckCircle, Clock, Flame, Info, CheckSquare, PackageOpen, Calendar, Search, Play, ChevronDown, Pencil } from 'lucide-react'
 import { FocusModal } from './components/FocusModal'
+import { EditarInsumosModal } from './components/EditarInsumosModal'
 import { useProdutosDinamicos } from '@/hooks/useProdutosDinamicos'
 
 export interface InsumoAgrupado {
@@ -26,6 +27,7 @@ export function ProducaoPage() {
   const { executarBaixaLote } = useBaixaEstoque()
   const [searchTerm, setSearchTerm] = useState('')
   const [focoLote, setFocoLote] = useState<any>(null)
+  const [editingInsumosLote, setEditingInsumosLote] = useState<any>(null)
 
   const handleConcluir = async (lote: any) => {
     try {
@@ -52,6 +54,11 @@ export function ProducaoPage() {
 
     // Agrupamento dinâmico
     return base.map(lote => {
+      // Se já foi editado manualmente, usamos a versão salva
+      if (lote.insumosAgrupadosEditados) {
+        return { ...lote, insumosAgrupados: lote.insumosAgrupadosEditados }
+      }
+
       if (!produtos || !insumos || !lote.insumosNecessarios) return { ...lote, insumosAgrupados: [] }
       
       const gruposMap = new Map<string, InsumoAgrupado[]>()
@@ -91,6 +98,13 @@ export function ProducaoPage() {
               }
             })
           }
+        })
+      }
+      
+      if (lote.embalagensExtras) {
+        lote.embalagensExtras.forEach((emb: any) => {
+          const atual = mapGeral.get(emb.insumoId) || 0
+          mapGeral.set(emb.insumoId, atual + emb.quantidade)
         })
       }
       
@@ -186,63 +200,90 @@ export function ProducaoPage() {
               </div>
               
               <div className="p-4 flex-1 flex flex-col gap-5">
-                {/* O QUE FAZER */}
+                {/* O QUE FAZER (Com Insumos Colapsáveis) */}
                 <div>
                   <strong className="text-sm text-dolce-marrom/70 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                     <PackageOpen className="w-4 h-4" /> Preparar
                   </strong>
-                  <ul className="space-y-1.5">
-                    {lote.produtos.map((p: any, i: number) => (
-                      <li key={i} className="flex items-start gap-2 text-dolce-marrom font-medium bg-gray-50 p-2 rounded-lg">
-                        <span className="font-black text-orange-600 bg-orange-100 px-2 py-0.5 rounded text-sm">{p.quantidade}x</span>
-                        <span className="pt-0.5">{p.nome}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="space-y-2">
+                    {lote.produtos.map((p: any, i: number) => {
+                      const grupoInsumos = lote.insumosAgrupados?.find((g: GrupoInsumos) => g.titulo === p.nome)
+                      return (
+                        <details key={i} className="group bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                          <summary className="flex justify-between items-center cursor-pointer p-3 outline-none hover:bg-gray-100 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <span className="font-black text-orange-600 bg-orange-100 px-2 py-0.5 rounded-lg text-sm">
+                                {p.quantidade}x
+                              </span>
+                              <span className="font-bold text-dolce-marrom">{p.nome}</span>
+                            </div>
+                            {grupoInsumos && grupoInsumos.itens.length > 0 && (
+                              <ChevronDown className="w-5 h-5 text-gray-400 group-open:-rotate-180 transition-transform" />
+                            )}
+                          </summary>
+                          
+                          {grupoInsumos && grupoInsumos.itens.length > 0 && (
+                            <div className="px-4 pb-4 pt-1">
+                              <ul className="text-sm text-dolce-marrom/70 leading-relaxed list-disc list-inside space-y-1">
+                                {grupoInsumos.itens.map((ins: any, idx: number) => (
+                                  <li key={idx}>
+                                    <span className="font-bold">{ins.quantidadeParaBaixar.toFixed(2)} {ins.unidade}</span> de {ins.insumoNome}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </details>
+                      )
+                    })}
+                  </div>
                 </div>
 
-                {/* INSUMOS (TEXTO SIMPLES) */}
-                {lote.insumosAgrupados && lote.insumosAgrupados.length > 0 ? (
-                  <div className="space-y-3">
+                {/* INSUMOS GERAIS (Embalagens Extras, etc) */}
+                {lote.insumosAgrupados?.find((g: GrupoInsumos) => g.titulo.includes('Geral')) && (
+                  <div>
                     <strong className="text-xs text-dolce-marrom/50 uppercase tracking-wider mb-1 block">
-                      Insumos Necessários
+                      Itens Gerais
                     </strong>
-                    {lote.insumosAgrupados.map((grupo: GrupoInsumos, idx: number) => (
-                      <div key={idx} className="bg-orange-50/50 p-3 rounded-lg border border-orange-100/50">
-                        <strong className="block text-xs font-bold text-orange-800 mb-1.5 uppercase tracking-wide border-b border-orange-200/50 pb-1">
-                          {grupo.titulo}
-                        </strong>
-                        <ul className="text-sm text-dolce-marrom/70 leading-relaxed list-disc list-inside space-y-1">
-                          {grupo.itens.map((ins: any, i: number) => (
-                            <li key={i}>
-                              <span className="font-bold">{ins.quantidadeParaBaixar.toFixed(2)} {ins.unidade}</span> de {ins.insumoNome}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  lote.insumosNecessarios && lote.insumosNecessarios.length > 0 && (
-                    <div>
-                      <strong className="text-xs text-dolce-marrom/50 uppercase tracking-wider mb-1 block">
-                        Insumos Necessários
-                      </strong>
-                      <ul className="text-sm text-dolce-marrom/70 bg-orange-50/50 p-3 rounded-lg border border-orange-100/50 leading-relaxed list-disc list-inside space-y-1">
-                        {lote.insumosNecessarios.map((ins: any, i: number) => (
+                    <div className="bg-orange-50/50 p-3 rounded-lg border border-orange-100/50">
+                      <ul className="text-sm text-dolce-marrom/70 leading-relaxed list-disc list-inside space-y-1">
+                        {lote.insumosAgrupados.find((g: GrupoInsumos) => g.titulo.includes('Geral')).itens.map((ins: any, i: number) => (
                           <li key={i}>
                             <span className="font-bold">{ins.quantidadeParaBaixar.toFixed(2)} {ins.unidade}</span> de {ins.insumoNome}
                           </li>
                         ))}
                       </ul>
                     </div>
-                  )
+                  </div>
+                )}
+
+                {/* Fallback para pedidos antigos sem agrupamento de receita */}
+                {(!lote.insumosAgrupados || lote.insumosAgrupados.length === 0) && lote.insumosNecessarios && lote.insumosNecessarios.length > 0 && (
+                  <div>
+                    <strong className="text-xs text-dolce-marrom/50 uppercase tracking-wider mb-1 block">
+                      Insumos Necessários
+                    </strong>
+                    <ul className="text-sm text-dolce-marrom/70 bg-orange-50/50 p-3 rounded-lg border border-orange-100/50 leading-relaxed list-disc list-inside space-y-1">
+                      {lote.insumosNecessarios.map((ins: any, i: number) => (
+                        <li key={i}>
+                          <span className="font-bold">{ins.quantidadeParaBaixar.toFixed(2)} {ins.unidade}</span> de {ins.insumoNome}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
 
               </div>
 
-              {/* ACTION BUTTON */}
-              <div className="p-4 pt-0">
+              {/* ACTION BUTTONS */}
+              <div className="p-4 pt-0 flex flex-col gap-2">
+                <button 
+                  onClick={() => setEditingInsumosLote(lote)}
+                  className="w-full flex justify-center items-center gap-2 font-bold py-2.5 px-4 rounded-xl text-orange-600 bg-orange-100 hover:bg-orange-200 transition-colors"
+                >
+                  <Pencil className="w-4 h-4" />
+                  Editar insumos
+                </button>
                 <button 
                   onClick={() => {
                     if (!lote.focoInicioAt) {
@@ -312,6 +353,14 @@ export function ProducaoPage() {
           onConcluir={async () => {
             await handleConcluir(focoLote)
           }}
+        />
+      )}
+
+      {/* MODAL DE EDIÇÃO DE INSUMOS */}
+      {editingInsumosLote && (
+        <EditarInsumosModal
+          lote={editingInsumosLote}
+          onClose={() => setEditingInsumosLote(null)}
         />
       )}
     </div>

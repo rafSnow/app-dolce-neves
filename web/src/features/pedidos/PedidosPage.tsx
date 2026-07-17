@@ -55,6 +55,13 @@ export function PedidosPage() {
       }
     })
 
+    if (pedidoData.embalagensExtras) {
+      pedidoData.embalagensExtras.forEach(emb => {
+        const atual = mapaInsumos.get(emb.insumoId) || 0
+        mapaInsumos.set(emb.insumoId, atual + emb.quantidade)
+      })
+    }
+
     const lotesParaBaixar: ItemBaixaEstoque[] = []
     mapaInsumos.forEach((qtdNecessaria, insId) => {
       const insumoDoc = insumos?.find(i => i.id === insId)
@@ -89,6 +96,7 @@ export function PedidosPage() {
               dataEntrega: novoPedido.dataEntrega,
               produtos: novoPedido.itens.map(i => ({ nome: i.produtoNome, quantidade: i.quantidade })),
               insumosNecessarios: insumosSeparacao,
+              embalagensExtras: novoPedido.embalagensExtras || [],
               status: 'Pendente',
               ativo: true
             })

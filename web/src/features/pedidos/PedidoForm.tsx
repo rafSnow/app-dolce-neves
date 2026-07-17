@@ -34,7 +34,12 @@ const pedidoSchema = z.object({
     quantidade: z.number().min(1, 'Mínimo 1'),
     precoUnitarioSnapshot: z.number().min(0),
     valorItem: z.number().min(0)
-  })).min(1, 'Adicione pelo menos um item')
+  })).min(1, 'Adicione pelo menos um item'),
+  embalagensExtras: z.array(z.object({
+    insumoId: z.string(),
+    insumoNome: z.string(),
+    quantidade: z.number().min(1)
+  })).optional()
 })
 
 export type PedidoFormData = z.infer<typeof pedidoSchema>
@@ -70,11 +75,13 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
   })
 
   const { fields, append, remove } = useFieldArray({ control, name: 'itens' })
+  const { fields: embFields, append: embAppend, remove: embRemove, replace: embReplace } = useFieldArray({ control, name: 'embalagensExtras' })
 
   const itens = watch('itens') || []
+  const embalagens = watch('embalagensExtras') || []
   const sinalDigitado = watch('pagamentos.sinal.valor') || 0
   
-  // Calcula o total do pedido observando os itens profundamente
+  // Calcula o total do pedido observando os itens e as embalagens extras
   useEffect(() => {
     let total = 0
     let totalMinutos = 0
@@ -89,14 +96,78 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
       }
     })
 
+    // Adiciona o custo das embalagens extras ao valor total do pedido
+    if (insumosDB) {
+      embalagens.forEach(emb => {
+        if (emb.insumoId && emb.quantidade) {
+          const insumoDoc = insumosDB.find((i: any) => i.id === emb.insumoId)
+          if (insumoDoc && insumoDoc.precoCompra && insumoDoc.pesoVolumeTotal) {
+            const custoPorUnidade = insumoDoc.precoCompra / insumoDoc.pesoVolumeTotal
+            total += custoPorUnidade * emb.quantidade
+          }
+        }
+      })
+    }
+
     setValue('valorTotal', total)
     setValue('estimativaTotalMinutos', Math.round(totalMinutos))
     // Se não tiver sinal digitado ainda, sugere o valor total para o restante
     setValue('pagamentos.restante.valor', Math.max(0, total - sinalDigitado))
-  }, [JSON.stringify(itens), sinalDigitado, setValue, produtosDB])
+  }, [JSON.stringify(itens), JSON.stringify(embalagens), sinalDigitado, setValue, produtosDB, insumosDB])
+
+  const handleSugestaoEmbalagens = () => {
+    if (!insumosDB) return
+    const embalagensDisponiveis = insumosDB.filter((i: any) => i.categoria === 'Embalagem' && i.capacidadeEmbalagem > 0)
+    if (embalagensDisponiveis.length === 0) {
+      alert('Nenhuma embalagem com "Capacidade" definida foi encontrada no cadastro de Insumos.')
+      return
+    }
+
+    const totalDoces = itens.reduce((sum, item) => sum + (item.quantidade || 0), 0)
+    if (totalDoces <= 0) {
+      alert('Adicione itens ao pedido primeiro.')
+      return
+    }
+
+    // Ordenar da maior capacidade para a menor
+    embalagensDisponiveis.sort((a: any, b: any) => b.capacidadeEmbalagem - a.capacidadeEmbalagem)
+
+    let remaining = totalDoces
+    const sugestao: any[] = []
+
+    for (const emb of embalagensDisponiveis) {
+      if (remaining <= 0) break
+      const qtd = Math.floor(remaining / emb.capacidadeEmbalagem)
+      if (qtd > 0) {
+        sugestao.push({ insumoId: emb.id, insumoNome: emb.nome, quantidade: qtd })
+        remaining -= qtd * emb.capacidadeEmbalagem
+      }
+    }
+
+    // Se sobrou algum doce (ex: faltou 10 e a menor caixa é de 25), pega uma caixa da menor disponível
+    if (remaining > 0) {
+      let bestFit = embalagensDisponiveis[embalagensDisponiveis.length - 1]
+      for (let i = embalagensDisponiveis.length - 1; i >= 0; i--) {
+        if (embalagensDisponiveis[i].capacidadeEmbalagem >= remaining) {
+          bestFit = embalagensDisponiveis[i]
+        } else {
+          break
+        }
+      }
+      
+      const existing = sugestao.find(s => s.insumoId === bestFit.id)
+      if (existing) {
+        existing.quantidade += 1
+      } else {
+        sugestao.push({ insumoId: bestFit.id, insumoNome: bestFit.nome, quantidade: 1 })
+      }
+    }
+
+    embReplace(sugestao)
+  }
 
   const faltantes = useMemo(() => {
-    if (!produtosDB || !insumosDB || !itens || itens.length === 0) return []
+    if (!produtosDB || !insumosDB || (!itens?.length && !embalagens?.length)) return []
     const mapa = new Map<string, number>()
     
     itens.forEach(item => {
@@ -121,6 +192,13 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
       }
     })
     
+    embalagens.forEach(emb => {
+      if (emb.insumoId) {
+        const atual = mapa.get(emb.insumoId) || 0
+        mapa.set(emb.insumoId, atual + (emb.quantidade || 1))
+      }
+    })
+
     const falta: { nome: string, qtdFalta: number, unidade: string }[] = []
     mapa.forEach((qtdNecessaria, insId) => {
       const insDoc = insumosDB.find((i: any) => i.id === insId)
@@ -135,7 +213,7 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
       }
     })
     return falta
-  }, [itens, produtosDB, insumosDB])
+  }, [itens, embalagens, produtosDB, insumosDB])
 
   const handleClienteSelect = (id: string) => {
     const cli = clientesDB?.find(c => c.id === id)
@@ -278,6 +356,74 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
           + Adicionar Produto
         </button>
         {errors.itens && <div className="text-rose-500 text-sm mt-2 font-medium">{errors.itens.message}</div>}
+      </div>
+
+      {/* SEÇÃO EXTRA: EMBALAGENS */}
+      <div>
+        <div className="flex justify-between items-center mb-3">
+          <h4 className="font-bold text-lg text-dolce-marrom flex items-center gap-2">
+            📦 Embalagens
+          </h4>
+          <button 
+            type="button" 
+            onClick={handleSugestaoEmbalagens}
+            className="text-xs bg-dolce-rosa/10 text-dolce-rosa hover:bg-dolce-rosa/20 px-3 py-1.5 rounded-lg font-bold transition-colors"
+          >
+            Sugerir Caixas Automático
+          </button>
+        </div>
+        
+        <div className="space-y-3">
+          {embFields.map((field, index) => (
+            <div key={field.id} className="relative bg-orange-50/50 p-3 rounded-xl border border-orange-100 flex gap-3 items-end">
+              <div className="flex-1">
+                <label className="block text-xs font-semibold text-dolce-marrom mb-1">Embalagem</label>
+                <Controller
+                  name={`embalagensExtras.${index}.insumoId`}
+                  control={control}
+                  render={({ field }) => (
+                    <SearchableSelect
+                      options={(insumosDB || [])
+                        .filter(i => i.categoria === 'Embalagem' && i.ativo !== false)
+                        .map(i => ({ value: i.id, label: i.nome }))}
+                      value={field.value || ''}
+                      onChange={(val) => {
+                        field.onChange(val)
+                        const ins = insumosDB?.find((i: any) => i.id === val)
+                        if (ins) setValue(`embalagensExtras.${index}.insumoNome`, ins.nome)
+                      }}
+                      placeholder="Selecione..."
+                    />
+                  )}
+                />
+              </div>
+              <div className="w-24">
+                <label className="block text-xs font-semibold text-dolce-marrom mb-1">Qtd</label>
+                <input 
+                  type="number" 
+                  min="1" 
+                  {...register(`embalagensExtras.${index}.quantidade`, { valueAsNumber: true })} 
+                  className="w-full bg-white border border-orange-200 text-dolce-marrom rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 transition-all" 
+                />
+              </div>
+              <button 
+                type="button" 
+                onClick={() => embRemove(index)} 
+                className="p-2.5 text-rose-500 bg-white hover:bg-rose-50 rounded-lg shadow-sm border border-rose-100 transition-colors h-[42px]"
+              >
+                X
+              </button>
+            </div>
+          ))}
+          
+          <button 
+            type="button" 
+            onClick={() => embAppend({ insumoId: '', insumoNome: '', quantidade: 1 })} 
+            className="w-full py-2 px-4 border border-dashed border-gray-300 text-gray-500 font-semibold rounded-xl hover:bg-gray-50 transition-colors text-sm"
+          >
+            + Adicionar Embalagem Manualmente
+          </button>
+        </div>
       </div>
 
       {/* SEÇÃO 3: ALERTA DE ESTOQUE */}

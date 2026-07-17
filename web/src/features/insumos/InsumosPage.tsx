@@ -79,7 +79,7 @@ export function InsumosPage() {
                        /* Mobile: Bottom Sheet */
                        bottom-0 left-0 right-0 w-full rounded-t-3xl max-h-[90vh] overflow-y-auto slide-in-from-bottom
                        /* Desktop: Modal Centralizado */
-                       md:bottom-auto md:top-[50%] md:left-[50%] md:-translate-x-1/2 md:-translate-y-1/2 md:max-w-lg md:rounded-2xl md:zoom-in-95"
+                       md:bottom-auto md:top-[50%] md:left-[50%] md:-translate-x-1/2 md:-translate-y-1/2 md:max-w-2xl md:rounded-2xl md:zoom-in-95"
           >
             {/* Grabber visual para mobile */}
             <div className="md:hidden w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
