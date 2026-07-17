@@ -60,7 +60,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
   const { data: clientesDB } = useFirestoreCollection<any>('clientes')
   const { data: produtosDB } = useProdutosDinamicos()
   const { data: insumosDB } = useFirestoreCollection<any>('insumos')
-  
+
   const { register, handleSubmit, control, watch, setValue, getValues, formState: { errors } } = useForm<OrcamentoFormData>({
     resolver: zodResolver(orcamentoSchema),
     defaultValues: initialData || {
@@ -281,15 +281,41 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
       total += custoInsumosExtras * (1 + lucroPercentualExtras / 100)
     }
 
+    // 4. Calcula o Custo Total da Produção do Orçamento
+    let sumInsumos = custoInsumosExtras
+    // Soma o custo dos insumos já em gruposInsumos
+    gruposInsumos.forEach(grupo => {
+      grupo.itens.forEach(item => {
+        // quantidadeOriginal já representa a receita base
+        sumInsumos += (item.quantidadeOriginal || 0) * (item.custoUnidade || 0)
+      })
+    })
+    
+    // Soma o custo das embalagens extras
+    if (insumosDB) {
+      watchedEmbalagens.forEach(emb => {
+        if (emb.insumoId && emb.quantidade) {
+          const insumoDoc = insumosDB.find((i: any) => i.id === emb.insumoId)
+          if (insumoDoc) {
+            const custoUnidade = insumoDoc.custoPorUnidadeMedida ?? (insumoDoc.pesoVolumeTotal > 0 ? (insumoDoc.precoCompra / insumoDoc.pesoVolumeTotal) : 0)
+            sumInsumos += custoUnidade * emb.quantidade
+          }
+        }
+      })
+    }
+
+    const valorTrabalhoCalculado = (tempoTotal / 60) * valorHoraTrabalhada
+    const lucroFinal = total - (sumInsumos + valorTrabalhoCalculado)
+
     setValue('valorTotal', total)
     setValue('tempoEstimadoTotal', Math.round(tempoTotal))
     
-    // Opcional: Manter retrocompatibilidade de campos se eles ainda existirem no banco
+    // Agora preenchemos corretamente os custos para que a Precificação Mágica do Orçamento funcione
     setValue('valorTotalSugerido', total)
-    setValue('custoInsumosTotal', 0)
-    setValue('custoMaoDeObraTotal', 0)
-    setValue('lucroEstimado', 0)
-  }, [JSON.stringify(watchedItens), JSON.stringify(watchedEmbalagens), produtosDB, insumosDB, setValue])
+    setValue('custoInsumosTotal', sumInsumos)
+    setValue('custoMaoDeObraTotal', valorTrabalhoCalculado)
+    setValue('lucroEstimado', lucroFinal)
+  }, [JSON.stringify(watchedItens), JSON.stringify(watchedEmbalagens), produtosDB, insumosDB, configs, setValue, watch('lucroInsumosExtrasPercentual')])
 
   const handleUpdateQty = (gIndex: number, iIndex: number, newVal: number) => {
     // Usa getValues para ter o estado mais atual sem depender de closure stale
@@ -316,8 +342,16 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
   const insumosOptions = insumosDB?.map(i => ({ value: i.id, label: i.nome })) || []
   const embalagensOptions = insumosDB?.filter(i => i.categoria === 'Embalagem').map(i => ({ value: i.id, label: i.nome })) || []
 
+  const onFormSubmit = (data: OrcamentoFormData) => {
+    // Garante que a versão final do cálculo de insumos (incluindo edições) seja salva
+    const currentEditados = getValues('insumosAgrupadosEditados')
+    const finalInsumos = currentEditados && currentEditados.length > 0 ? currentEditados : gruposInsumos
+    data.insumosAgrupadosEditados = finalInsumos
+    onSubmit(data)
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full bg-white relative">
+    <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col h-full bg-white relative">
       
       {/* TABS HEADER */}
       <div className="flex bg-gray-50 p-2 rounded-xl mb-6 shadow-inner border border-gray-100">

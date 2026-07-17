@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useFirestoreCollection, useFirestoreMutation } from '@/hooks/useFirestore'
-import { Search, Plus, FileText, CheckCircle, X, DollarSign, Calendar, MessageCircle, Ban, Pencil } from 'lucide-react'
+import { Search, Plus, FileText, CheckCircle, X, DollarSign, Calendar, MessageCircle, Ban, Pencil, PackageOpen, ChevronDown } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { OrcamentoForm, OrcamentoFormData } from './OrcamentoForm'
 import { useBaixaEstoque } from '@/features/pedidos/useBaixaEstoque'
@@ -237,19 +237,101 @@ export function OrcamentosPage() {
                 </span>
               </div>
 
-              <div className="p-5 flex flex-col gap-3 flex-1">
-                <div className="flex justify-between items-center bg-gray-50/50 p-3 rounded-xl">
-                  <span className="text-sm font-medium text-dolce-marrom/70 flex items-center gap-2">
-                    <DollarSign className="w-4 h-4 text-emerald-600" /> Valor Sugerido
-                  </span>
-                  <span className="font-bold text-lg text-emerald-700">
-                    R$ {orc.valorTotal?.toFixed(2)}
-                  </span>
+              <div className="p-5 flex-1 flex flex-col gap-5">
+                {/* O QUE FAZER (Com Insumos Colapsáveis) */}
+                <div>
+                  <strong className="text-sm text-dolce-marrom/70 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <PackageOpen className="w-4 h-4" /> Preparar
+                  </strong>
+                  <div className="space-y-2">
+                    {orc.itens?.map((p: any, i: number) => {
+                      const grupoInsumos = orc.insumosAgrupadosEditados?.find((g: any) => g.titulo === p.produtoNome)
+                      return (
+                        <details key={i} className="group bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                          <summary className="flex justify-between items-center cursor-pointer p-3 outline-none hover:bg-gray-100 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <span className="font-black text-dolce-rosa bg-dolce-rosa-claro/30 px-2 py-0.5 rounded-lg text-sm">
+                                {p.quantidade}x
+                              </span>
+                              <span className="font-bold text-dolce-marrom">{p.produtoNome}</span>
+                            </div>
+                            {grupoInsumos && grupoInsumos.itens.length > 0 && (
+                              <ChevronDown className="w-5 h-5 text-gray-400 group-open:-rotate-180 transition-transform" />
+                            )}
+                          </summary>
+                          
+                          {grupoInsumos && grupoInsumos.itens.length > 0 && (
+                            <div className="px-4 pb-4 pt-1">
+                              <ul className="text-sm text-dolce-marrom/70 leading-relaxed list-disc list-inside space-y-1">
+                                {grupoInsumos.itens.map((ins: any, idx: number) => (
+                                  <li key={idx}>
+                                    <span className="font-bold">{(ins.quantidadeParaBaixar || 0).toFixed(2)} {ins.unidade}</span> de {ins.insumoNome}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </details>
+                      )
+                    })}
+                  </div>
                 </div>
 
-                <div className="flex justify-between items-center px-1">
-                  <span className="text-sm font-medium text-dolce-marrom/70">Itens Cotados</span>
-                  <span className="text-sm font-bold text-dolce-marrom">{orc.itens?.length || 0} produto(s)</span>
+                {/* INSUMOS GERAIS (Embalagens Extras, etc) */}
+                {orc.insumosAgrupadosEditados?.find((g: any) => g.titulo.includes('Geral')) && (
+                  <div>
+                    <strong className="text-xs text-dolce-marrom/50 uppercase tracking-wider mb-1 block">
+                      Itens Gerais
+                    </strong>
+                    <div className="bg-dolce-rosa-claro/20 p-3 rounded-lg border border-dolce-rosa-claro/50">
+                      <ul className="text-sm text-dolce-marrom/70 leading-relaxed list-disc list-inside space-y-1">
+                        {orc.insumosAgrupadosEditados.find((g: any) => g.titulo.includes('Geral')).itens.map((ins: any, i: number) => (
+                          <li key={i}>
+                            <span className="font-bold">{(ins.quantidadeParaBaixar || 0).toFixed(2)} {ins.unidade}</span> de {ins.insumoNome}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+                {/* PRECIFICAÇÃO MÁGICA DO ORÇAMENTO */}
+                <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100 mt-2">
+                  <h4 className="font-bold text-sm text-emerald-800 mb-3 flex items-center gap-1.5 uppercase tracking-wide">
+                    <DollarSign className="w-4 h-4" /> Precificação Mágica
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div className="bg-white p-3 rounded-xl shadow-sm border border-emerald-100/50 relative group cursor-help">
+                      <div className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-wider mb-0.5">Custo de Produção</div>
+                      <div className="text-lg font-black text-emerald-600">
+                        R$ {((orc.custoInsumosTotal || 0) + (orc.custoMaoDeObraTotal || 0)).toFixed(2)}
+                      </div>
+                      
+                      {/* Tooltip Hover for breakdown */}
+                      <div className="absolute hidden group-hover:block bottom-full left-0 mb-2 w-48 bg-gray-800 text-white text-xs p-2 rounded-lg shadow-xl z-50">
+                        <div className="flex justify-between mb-1">
+                          <span className="text-gray-400">Insumos (Total):</span>
+                          <span className="font-bold">R$ {(orc.custoInsumosTotal || 0).toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Mão de Obra:</span>
+                          <span className="font-bold">R$ {(orc.custoMaoDeObraTotal || 0).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-emerald-600 p-3 rounded-xl shadow-sm border border-emerald-700 text-white">
+                      <div className="text-[10px] font-bold text-emerald-100 uppercase tracking-wider mb-0.5">Valor Sugerido</div>
+                      <div className="text-lg font-black text-white">
+                        R$ {(orc.valorTotal || 0).toFixed(2)}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between items-center px-1">
+                    <span className="text-xs font-bold text-emerald-700/60 uppercase">Lucro Estimado Bruto</span>
+                    <span className="text-sm font-black text-emerald-700">R$ {(orc.lucroEstimado || 0).toFixed(2)}</span>
+                  </div>
                 </div>
               </div>
 
