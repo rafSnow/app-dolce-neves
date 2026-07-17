@@ -229,7 +229,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
     })
     
     // Soma o custo do grupo "Geral" (Embalagens, etc)
-    const grupoGeral = gruposInsumos.find((g: any) => g.titulo.includes('Geral'))
+    const grupoGeral = gruposInsumos.find((g: any) => g.titulo?.includes('Geral'))
     if (grupoGeral) {
       const custoGeral = grupoGeral.itens.reduce((acc: number, i: any) => {
          const dbIns = insumosDB?.find(x => x.id === i.insumoId)
