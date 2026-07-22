@@ -331,15 +331,19 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
   const embalagensOptions = insumosDB?.filter(i => i.categoria === 'Embalagem').map(i => ({ value: i.id, label: i.nome })) || []
 
   const onFormSubmit = (data: OrcamentoFormData) => {
-    // Garante que a versão final do cálculo de insumos (incluindo edições) seja salva
-    const currentEditados = getValues('insumosAgrupadosEditados')
-    const finalInsumos = currentEditados && currentEditados.length > 0 ? currentEditados : gruposInsumos
-    data.insumosAgrupadosEditados = finalInsumos
+    // Garante que a versão final do cálculo de insumos (incluindo edições) seja salva.
+    // 'gruposInsumos' já contém o merge entre a lista de itens atual e as edições feitas pelo usuário.
+    data.insumosAgrupadosEditados = gruposInsumos
     onSubmit(data)
   }
 
+  const onFormError = (errors: any) => {
+    console.error('Erros de validação do formulário:', errors)
+    alert('Preencha todos os campos obrigatórios corretamente.')
+  }
+
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col h-full bg-white relative">
+    <form onSubmit={handleSubmit(onFormSubmit, onFormError)} className="flex flex-col h-full bg-white relative">
       
       {/* TABS HEADER */}
       <div className="flex bg-gray-50 p-2 rounded-xl mb-6 shadow-inner border border-gray-100">
@@ -420,9 +424,12 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
                     <div className="w-24">
                       <input 
                         type="number" min="1" 
-                        {...register(`itens.${index}.quantidade`, { valueAsNumber: true })} 
+                        {...register(`itens.${index}.quantidade`, { 
+                          valueAsNumber: true,
+                          setValueAs: (v) => (Number.isNaN(v) || v === '' ? 1 : Number(v))
+                        })} 
                         onChange={(e) => {
-                          const qty = parseFloat(e.target.value) || 0
+                          const qty = parseFloat(e.target.value) || 1
                           setValue(`itens.${index}.quantidade`, qty)
                           const precoSnap = watch(`itens.${index}.precoUnitarioSnapshot`) || 0
                           setValue(`itens.${index}.valorItem`, precoSnap * qty)
@@ -497,7 +504,10 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
               <input 
                 type="number" 
                 min="0"
-                {...register('lucroInsumosExtrasPercentual', { valueAsNumber: true })} 
+                {...register('lucroInsumosExtrasPercentual', { 
+                  valueAsNumber: true,
+                  setValueAs: (v) => (Number.isNaN(v) || v === '' ? 0 : Number(v))
+                })} 
                 className="w-24 bg-gray-50 border border-gray-300 rounded-lg p-2 text-right font-bold text-dolce-marrom focus:ring-2 focus:ring-dolce-rosa"
               />
             </div>
@@ -510,9 +520,22 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
                 <div className="p-3 space-y-2">
                   {grupo.itens.map((item: any, iIndex: number) => (
                     <div key={iIndex} className="flex justify-between items-center p-2 hover:bg-gray-50 rounded-lg">
-                      <div className="flex flex-col">
+                      <div className="flex flex-col flex-1 mr-4">
                         <span className="font-semibold text-sm text-dolce-marrom">{item.insumoNome}</span>
-                        <span className="text-xs text-gray-500">Unidade: {item.unidade}</span>
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                          <span className="text-[11px] text-gray-500">
+                            <strong>Qtd na Receita:</strong> {Number(item.quantidadeOriginal).toLocaleString('pt-BR', { maximumFractionDigits: 4 })}
+                          </span>
+                          <span className="text-[11px] text-gray-500">
+                            <strong>Unid.:</strong> {item.unidade}
+                          </span>
+                          <span className="text-[11px] text-gray-500">
+                            <strong>Por Unid.:</strong> {(item.custoUnidade || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </span>
+                          <span className="text-[11px] text-dolce-rosa font-bold">
+                            <strong>Custo:</strong> {((item.quantidadeParaBaixar || 0) * (item.custoUnidade || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-500 font-bold">Qtd:</span>
