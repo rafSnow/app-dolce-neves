@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useFirestoreCollection, useFirestoreMutation } from '@/hooks/useFirestore'
-import { Search, Plus, FileText, CheckCircle, X, DollarSign, Calendar, MessageCircle, Ban, Pencil, PackageOpen, ChevronDown, Download } from 'lucide-react'
+import { Search, Plus, FileText, CheckCircle, X, DollarSign, Calendar, MessageCircle, Ban, Pencil, PackageOpen, ChevronDown, Download, Trash2 } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { pdf } from '@react-pdf/renderer'
 import { ComprovantePDF } from '@/features/pedidos/ComprovantePDF'
@@ -10,7 +10,7 @@ import { PedidoFormData } from '@/features/pedidos/PedidoForm'
 
 export function OrcamentosPage() {
   const { data: orcamentos, isLoading } = useFirestoreCollection<any>('orcamentos')
-  const { add, update } = useFirestoreMutation<any>('orcamentos')
+  const { add, update, remove } = useFirestoreMutation<any>('orcamentos')
   
   const { add: addPedido } = useFirestoreMutation<PedidoFormData & {id: string}>('pedidos')
   const { add: addLote } = useFirestoreMutation<any>('producao')
@@ -135,9 +135,21 @@ export function OrcamentosPage() {
     }
   }
 
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Tem certeza que deseja excluir este orçamento?')) {
+      try {
+        await remove.mutateAsync(id)
+      } catch (error) {
+        console.error('Erro ao excluir orçamento:', error)
+        alert('Erro ao excluir orçamento.')
+      }
+    }
+  }
+
   const filtered = (orcamentos || []).filter(o => 
-    o.clienteNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    o.status.toLowerCase().includes(searchTerm.toLowerCase())
+    o.ativo !== false &&
+    (o.clienteNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    o.status.toLowerCase().includes(searchTerm.toLowerCase()))
   ).sort((a, b) => new Date(b.dataEntrega).getTime() - new Date(a.dataEntrega).getTime())
 
   if (isLoading) return <div className="p-8 text-center text-dolce-marrom/50">Carregando orçamentos...</div>
@@ -398,6 +410,13 @@ export function OrcamentosPage() {
                     className="py-2.5 px-4 flex items-center gap-2 text-sm font-semibold text-dolce-rosa hover:bg-dolce-rosa-claro/50 rounded-xl transition-colors bg-dolce-rosa-claro/30 shadow-sm"
                   >
                     <Pencil className="w-4 h-4" /> Editar
+                  </button>
+                  <button
+                    onClick={() => handleDelete(orc.id)}
+                    className="py-2.5 px-3 flex items-center gap-2 text-sm font-semibold text-red-600 hover:bg-red-100 rounded-xl transition-colors bg-red-50 shadow-sm"
+                    title="Excluir Orçamento"
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
