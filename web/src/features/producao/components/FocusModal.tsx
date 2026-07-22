@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Clock, Play, Pause, CheckCircle, X, PackageOpen, CheckSquare } from 'lucide-react'
+import { useConfirm } from '@/contexts/ConfirmContext'
 
 interface Props {
   lote: any
@@ -12,6 +13,7 @@ interface Props {
 export function FocusModal({ lote, onClose, onUpdateState, onConcluir }: Props) {
   const [now, setNow] = useState(Date.now())
   const [isFinishing, setIsFinishing] = useState(false)
+  const confirm = useConfirm()
 
   // Force re-render every second to update the timer
   useEffect(() => {
@@ -49,7 +51,13 @@ export function FocusModal({ lote, onClose, onUpdateState, onConcluir }: Props) 
   }
 
   const handleConcluir = async () => {
-    if (!window.confirm('Tem certeza que deseja encerrar a produção? O tempo real será salvo e o estoque será baixado.')) return
+    const confirmed = await confirm({
+      title: 'Encerrar Produção',
+      message: 'Tem certeza que deseja encerrar a produção? O tempo real será salvo e o estoque será baixado.',
+      confirmText: 'Encerrar e Concluir',
+      variant: 'info'
+    })
+    if (!confirmed) return
     setIsFinishing(true)
     
     // Save final time before completing

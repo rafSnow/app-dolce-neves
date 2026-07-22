@@ -6,6 +6,7 @@ import { Pencil, Trash2, Plus, ShoppingBag, Calendar, DollarSign, X, CheckCircle
 import * as Dialog from '@radix-ui/react-dialog'
 import { pdf } from '@react-pdf/renderer'
 import { ComprovantePDF } from './ComprovantePDF'
+import { toast } from 'sonner'
 
 export function PedidosPage() {
   const { data: pedidos, isLoading } = useFirestoreCollection<PedidoFormData & {id: string}>('pedidos')
@@ -57,8 +58,9 @@ export function PedidosPage() {
         }
       }
       setIsFormOpen(false)
+      toast.success(editingPedido ? 'Pedido atualizado!' : 'Pedido criado com sucesso!')
     } catch (error: any) {
-      alert('Erro ao salvar pedido: ' + error.message)
+      toast.error('Erro ao salvar pedido: ' + error.message)
     }
   }
 
@@ -81,8 +83,9 @@ export function PedidosPage() {
         }
       }
       setPedidoToCancel(null)
+      toast.success('Pedido cancelado com sucesso!')
     } catch (error: any) {
-      alert('Erro ao cancelar pedido: ' + error.message)
+      toast.error('Erro ao cancelar pedido: ' + error.message)
     }
   }
 
@@ -109,9 +112,10 @@ export function PedidosPage() {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
+      toast.success('PDF gerado com sucesso!')
     } catch (error) {
       console.error('Erro ao gerar PDF', error)
-      alert('Não foi possível gerar o PDF.')
+      toast.error('Não foi possível gerar o PDF.')
     }
   }
 

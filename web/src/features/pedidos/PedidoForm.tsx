@@ -6,6 +6,7 @@ import { useFirestoreCollection } from '@/hooks/useFirestore'
 import { useProdutosDinamicos } from '@/hooks/useProdutosDinamicos'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { Clock } from 'lucide-react'
+import { toast } from 'sonner'
 
 const pagamentoSchema = z.object({
   valor: z.number().min(0),
@@ -119,13 +120,13 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
     if (!insumosDB) return
     const embalagensDisponiveis = insumosDB.filter((i: any) => i.categoria === 'Embalagem' && i.capacidadeEmbalagem > 0)
     if (embalagensDisponiveis.length === 0) {
-      alert('Nenhuma embalagem com "Capacidade" definida foi encontrada no cadastro de Insumos.')
+      toast.warning('Nenhuma embalagem com "Capacidade" definida foi encontrada no cadastro de Insumos.')
       return
     }
 
     const totalDoces = itens.reduce((sum, item) => sum + (item.quantidade || 0), 0)
     if (totalDoces <= 0) {
-      alert('Adicione itens ao pedido primeiro.')
+      toast.warning('Adicione itens ao pedido primeiro.')
       return
     }
 

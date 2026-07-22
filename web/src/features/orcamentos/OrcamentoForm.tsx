@@ -7,6 +7,7 @@ import { useProdutosDinamicos } from '@/hooks/useProdutosDinamicos'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { useCalculadoraPrecificacao } from '@/features/produtos/useCalculadoraPrecificacao'
 import { ShoppingBag, ChevronRight, Package, Calculator, Save, AlertCircle, Plus, X } from 'lucide-react'
+import { toast } from 'sonner'
 
 const orcamentoSchema = z.object({
   clienteId: z.string().min(1, 'Cliente obrigatório'),
@@ -339,7 +340,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
 
   const onFormError = (errors: any) => {
     console.error('Erros de validação do formulário:', errors)
-    alert('Preencha todos os campos obrigatórios corretamente.')
+    toast.error('Preencha todos os campos obrigatórios corretamente.')
   }
 
   return (

@@ -1,3 +1,4 @@
+import { toast } from 'sonner'
 import { useState, useEffect } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { X, Save, Scale } from 'lucide-react'
@@ -64,8 +65,9 @@ export function EditarInsumosModal({ lote, onClose }: Props) {
       })
 
       onClose()
+      toast.success('Insumos salvos com sucesso!')
     } catch (error: any) {
-      alert('Erro ao salvar insumos: ' + error.message)
+      toast.error('Erro ao salvar insumos: ' + error.message)
     } finally {
       setIsSaving(false)
     }

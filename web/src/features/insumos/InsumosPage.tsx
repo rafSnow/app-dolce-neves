@@ -4,10 +4,13 @@ import { InsumoForm, InsumoFormData } from './InsumoForm'
 import { RegistrarCompraModal } from './RegistrarCompraModal'
 import { Pencil, Trash2, Plus, ShoppingCart, AlertCircle, PackageOpen, X, Search } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
+import { useConfirm } from '@/contexts/ConfirmContext'
+import { toast } from 'sonner'
 
 export function InsumosPage() {
   const { data: insumos, isLoading } = useFirestoreCollection<InsumoFormData & {id: string}>('insumos')
   const { add, update, remove } = useFirestoreMutation<InsumoFormData & {id: string}>('insumos')
+  const confirm = useConfirm()
   
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingInsumo, setEditingInsumo] = useState<(InsumoFormData & {id: string}) | null>(null)
@@ -20,12 +23,18 @@ export function InsumosPage() {
   }
 
   const handleSubmit = async (data: InsumoFormData) => {
-    if (editingInsumo) {
-      await update.mutateAsync({ id: editingInsumo.id, data })
-    } else {
-      await add.mutateAsync(data)
+    try {
+      if (editingInsumo) {
+        await update.mutateAsync({ id: editingInsumo.id, data })
+        toast.success('Insumo atualizado com sucesso!')
+      } else {
+        await add.mutateAsync(data)
+        toast.success('Insumo cadastrado com sucesso!')
+      }
+      setIsFormOpen(false)
+    } catch (error: any) {
+      toast.error('Erro ao salvar insumo: ' + error.message)
     }
-    setIsFormOpen(false)
   }
 
   const filteredInsumos = useMemo(() => {
@@ -176,9 +185,20 @@ export function InsumosPage() {
                   <Pencil className="w-5 h-5" />
                 </button>
                 <button 
-                  onClick={() => {
-                    if (window.confirm('Tem certeza que deseja remover este insumo?')) {
-                      remove.mutateAsync(insumo.id)
+                  onClick={async () => {
+                    const confirmed = await confirm({
+                      title: 'Remover Insumo',
+                      message: 'Tem certeza que deseja remover este insumo?',
+                      confirmText: 'Remover',
+                      variant: 'danger'
+                    })
+                    if (confirmed) {
+                      try {
+                        await remove.mutateAsync(insumo.id)
+                        toast.success('Insumo removido.')
+                      } catch (error: any) {
+                        toast.error('Erro ao remover: ' + error.message)
+                      }
                     }
                   }} 
                   className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"

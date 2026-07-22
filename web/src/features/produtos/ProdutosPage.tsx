@@ -4,10 +4,13 @@ import { useProdutosDinamicos } from '@/hooks/useProdutosDinamicos'
 import { ProdutoForm, ProdutoFormData } from './ProdutoForm'
 import { Plus, Pencil, Trash2, BookOpen, Calculator, X, CakeSlice, Search, Copy } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
+import { useConfirm } from '@/contexts/ConfirmContext'
+import { toast } from 'sonner'
 
 export function ProdutosPage() {
   const { data: produtos, isLoading } = useProdutosDinamicos()
   const { add, update, remove } = useFirestoreMutation<ProdutoFormData & {id: string}>('produtos')
+  const confirm = useConfirm()
   
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingProduto, setEditingProduto] = useState<(ProdutoFormData & {id?: string}) | null>(null)
@@ -28,12 +31,18 @@ export function ProdutosPage() {
   }
 
   const handleSubmit = async (data: ProdutoFormData) => {
-    if (editingProduto && editingProduto.id) {
-      await update.mutateAsync({ id: editingProduto.id, data })
-    } else {
-      await add.mutateAsync(data)
+    try {
+      if (editingProduto && editingProduto.id) {
+        await update.mutateAsync({ id: editingProduto.id, data })
+        toast.success('Produto atualizado com sucesso!')
+      } else {
+        await add.mutateAsync(data)
+        toast.success('Produto cadastrado com sucesso!')
+      }
+      setIsFormOpen(false)
+    } catch (error: any) {
+      toast.error('Erro ao salvar produto: ' + error.message)
     }
-    setIsFormOpen(false)
   }
 
   const filteredProdutos = useMemo(() => {
@@ -170,9 +179,20 @@ export function ProdutosPage() {
               </button>
               <div className="w-px bg-gray-200 my-2"></div>
               <button 
-                onClick={() => {
-                  if (window.confirm('Tem certeza que deseja remover este produto?')) {
-                    remove.mutateAsync(produto.id)
+                onClick={async () => {
+                  const confirmed = await confirm({
+                    title: 'Remover Produto',
+                    message: 'Tem certeza que deseja remover este produto?',
+                    confirmText: 'Remover',
+                    variant: 'danger'
+                  })
+                  if (confirmed) {
+                    try {
+                      await remove.mutateAsync(produto.id)
+                      toast.success('Produto removido.')
+                    } catch (error: any) {
+                      toast.error('Erro ao remover: ' + error.message)
+                    }
                   }
                 }} 
                 className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"

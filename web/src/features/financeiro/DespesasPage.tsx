@@ -3,10 +3,13 @@ import { useFirestoreCollection, useFirestoreMutation } from '@/hooks/useFiresto
 import { DespesaForm, DespesaFormData } from './DespesaForm'
 import { Plus, X, Receipt, Calendar, CheckCircle2, AlertCircle, Pencil, Trash2, Search } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
+import { useConfirm } from '@/contexts/ConfirmContext'
+import { toast } from 'sonner'
 
 export function DespesasPage() {
   const { data: despesas, isLoading } = useFirestoreCollection<DespesaFormData & {id: string}>('despesas')
   const { add, update, remove } = useFirestoreMutation<DespesaFormData & {id: string}>('despesas')
+  const confirm = useConfirm()
   
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingDespesa, setEditingDespesa] = useState<(DespesaFormData & {id: string}) | null>(null)
@@ -18,12 +21,18 @@ export function DespesasPage() {
   }
 
   const handleSubmit = async (data: DespesaFormData) => {
-    if (editingDespesa) {
-      await update.mutateAsync({ id: editingDespesa.id, data })
-    } else {
-      await add.mutateAsync(data)
+    try {
+      if (editingDespesa) {
+        await update.mutateAsync({ id: editingDespesa.id, data })
+        toast.success('Despesa atualizada com sucesso!')
+      } else {
+        await add.mutateAsync(data)
+        toast.success('Despesa registrada com sucesso!')
+      }
+      setIsFormOpen(false)
+    } catch (error: any) {
+      toast.error('Erro ao salvar despesa: ' + error.message)
     }
-    setIsFormOpen(false)
   }
 
   const isOverdue = (vencimento: string, status: string) => {
@@ -195,9 +204,20 @@ export function DespesasPage() {
                 </button>
                 <div className="w-px bg-gray-200 my-2"></div>
                 <button 
-                  onClick={() => {
-                    if (window.confirm(`Tem certeza que deseja remover a despesa "${despesa.descricao}"?`)) {
-                      remove.mutateAsync(despesa.id)
+                  onClick={async () => {
+                    const confirmed = await confirm({
+                      title: 'Remover Despesa',
+                      message: `Tem certeza que deseja remover a despesa "${despesa.descricao}"?`,
+                      confirmText: 'Remover',
+                      variant: 'danger'
+                    })
+                    if (confirmed) {
+                      try {
+                        await remove.mutateAsync(despesa.id)
+                        toast.success('Despesa removida.')
+                      } catch (error: any) {
+                        toast.error('Erro ao remover: ' + error.message)
+                      }
                     }
                   }} 
                   className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"

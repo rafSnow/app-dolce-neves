@@ -7,10 +7,13 @@ import { ComprovantePDF } from '@/features/pedidos/ComprovantePDF'
 import { OrcamentoForm, OrcamentoFormData } from './OrcamentoForm'
 import { useBaixaEstoque } from '@/features/pedidos/useBaixaEstoque'
 import { PedidoFormData } from '@/features/pedidos/PedidoForm'
+import { useConfirm } from '@/contexts/ConfirmContext'
+import { toast } from 'sonner'
 
 export function OrcamentosPage() {
   const { data: orcamentos, isLoading } = useFirestoreCollection<any>('orcamentos')
   const { add, update, remove } = useFirestoreMutation<any>('orcamentos')
+  const confirm = useConfirm()
   
   const { add: addPedido } = useFirestoreMutation<PedidoFormData & {id: string}>('pedidos')
   const { add: addLote } = useFirestoreMutation<any>('producao')
@@ -33,17 +36,25 @@ export function OrcamentosPage() {
     try {
       if (editingOrcamento) {
         await update.mutateAsync({ id: editingOrcamento.id, data })
+        toast.success('Orçamento atualizado!')
       } else {
         await add.mutateAsync({ ...data, dataCriacao: new Date().toISOString() })
+        toast.success('Orçamento criado!')
       }
       setIsFormOpen(false)
     } catch (error: any) {
-      alert('Erro ao salvar orçamento: ' + error.message)
+      toast.error('Erro ao salvar orçamento: ' + error.message)
     }
   }
 
   const handleAprovar = async (orc: any) => {
-    if (!window.confirm('Aprovar este orçamento e gerar o Pedido?')) return
+    const confirmed = await confirm({
+      title: 'Aprovar Orçamento',
+      message: 'Deseja aprovar este orçamento e gerar o Pedido?',
+      confirmText: 'Aprovar e Gerar Pedido',
+      variant: 'info'
+    })
+    if (!confirmed) return
 
     try {
       // Cria o Pedido
@@ -95,15 +106,26 @@ export function OrcamentosPage() {
       // Atualiza o Orçamento para Aprovado
       await update.mutateAsync({ id: orc.id, data: { status: 'Aprovado' } })
 
-      alert('Orçamento aprovado e Pedido criado com sucesso!')
+      toast.success('Orçamento aprovado e Pedido criado com sucesso!')
     } catch (err: any) {
-      alert('Erro ao aprovar orçamento: ' + err.message)
+      toast.error('Erro ao aprovar orçamento: ' + err.message)
     }
   }
 
   const handleRejeitar = async (orc: any) => {
-    if (window.confirm('Marcar orçamento como rejeitado?')) {
-      await update.mutateAsync({ id: orc.id, data: { status: 'Rejeitado' } })
+    const confirmed = await confirm({
+      title: 'Rejeitar Orçamento',
+      message: 'Marcar orçamento como rejeitado?',
+      confirmText: 'Rejeitar',
+      variant: 'danger'
+    })
+    if (confirmed) {
+      try {
+        await update.mutateAsync({ id: orc.id, data: { status: 'Rejeitado' } })
+        toast.success('Orçamento rejeitado.')
+      } catch (error: any) {
+        toast.error('Erro ao rejeitar orçamento: ' + error.message)
+      }
     }
   }
 
@@ -129,19 +151,27 @@ export function OrcamentosPage() {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
+      toast.success('PDF gerado com sucesso!')
     } catch (error) {
       console.error('Erro ao gerar PDF', error)
-      alert('Não foi possível gerar o PDF.')
+      toast.error('Não foi possível gerar o PDF.')
     }
   }
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Tem certeza que deseja excluir este orçamento?')) {
+    const confirmed = await confirm({
+      title: 'Excluir Orçamento',
+      message: 'Tem certeza que deseja excluir este orçamento?',
+      confirmText: 'Excluir',
+      variant: 'danger'
+    })
+    if (confirmed) {
       try {
         await remove.mutateAsync(id)
+        toast.success('Orçamento excluído com sucesso!')
       } catch (error) {
         console.error('Erro ao excluir orçamento:', error)
-        alert('Erro ao excluir orçamento.')
+        toast.error('Erro ao excluir orçamento.')
       }
     }
   }

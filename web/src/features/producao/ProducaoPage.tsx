@@ -5,6 +5,7 @@ import { ChefHat, CheckCircle, Clock, Flame, Info, CheckSquare, PackageOpen, Cal
 import { FocusModal } from './components/FocusModal'
 import { EditarInsumosModal } from './components/EditarInsumosModal'
 import { useProdutosDinamicos } from '@/hooks/useProdutosDinamicos'
+import { toast } from 'sonner'
 
 export interface InsumoAgrupado {
   insumoId: string;
@@ -40,9 +41,9 @@ export function ProducaoPage() {
       // 3. Atualizar flag do pedido
       await updatePedido.mutateAsync({ id: lote.pedidoId, data: { estoqueBaixado: true } })
 
-      alert('Produção concluída com sucesso! Estoque atualizado.')
+      toast.success('Produção concluída com sucesso! Estoque atualizado.')
     } catch (error: any) {
-      alert('Erro ao concluir produção: ' + error.message)
+      toast.error('Erro ao concluir produção: ' + error.message)
     }
   }
 

@@ -3,10 +3,13 @@ import { useFirestoreCollection, useFirestoreMutation } from '@/hooks/useFiresto
 import { ClienteForm, ClienteFormData } from './ClienteForm'
 import { Plus, Users, X, MessageCircle, Pencil, Trash2, Calendar, Search } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
+import { useConfirm } from '@/contexts/ConfirmContext'
+import { toast } from 'sonner'
 
 export function ClientesPage() {
   const { data: clientes, isLoading } = useFirestoreCollection<ClienteFormData & {id: string}>('clientes')
   const { add, update, remove } = useFirestoreMutation<ClienteFormData & {id: string}>('clientes')
+  const confirm = useConfirm()
   
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingCliente, setEditingCliente] = useState<(ClienteFormData & {id: string}) | null>(null)
@@ -18,12 +21,18 @@ export function ClientesPage() {
   }
 
   const handleSubmit = async (data: ClienteFormData) => {
-    if (editingCliente) {
-      await update.mutateAsync({ id: editingCliente.id, data })
-    } else {
-      await add.mutateAsync({ ...data, dataCadastro: new Date().toISOString() })
+    try {
+      if (editingCliente) {
+        await update.mutateAsync({ id: editingCliente.id, data })
+        toast.success('Cliente atualizado com sucesso!')
+      } else {
+        await add.mutateAsync({ ...data, dataCadastro: new Date().toISOString() })
+        toast.success('Cliente cadastrado com sucesso!')
+      }
+      setIsFormOpen(false)
+    } catch (error: any) {
+      toast.error('Erro ao salvar cliente: ' + error.message)
     }
-    setIsFormOpen(false)
   }
 
   const getWhatsAppLink = (phone: string) => {
@@ -168,9 +177,20 @@ export function ClientesPage() {
               </button>
               <div className="w-px bg-gray-200 my-2"></div>
               <button 
-                onClick={() => {
-                  if (window.confirm(`Tem certeza que deseja remover ${cliente.nome}?`)) {
-                    remove.mutateAsync(cliente.id)
+                onClick={async () => {
+                  const confirmed = await confirm({
+                    title: 'Excluir Cliente',
+                    message: `Tem certeza que deseja remover ${cliente.nome}?`,
+                    confirmText: 'Excluir',
+                    variant: 'danger'
+                  })
+                  if (confirmed) {
+                    try {
+                      await remove.mutateAsync(cliente.id)
+                      toast.success('Cliente removido.')
+                    } catch (error: any) {
+                      toast.error('Erro ao remover: ' + error.message)
+                    }
                   }
                 }} 
                 className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"

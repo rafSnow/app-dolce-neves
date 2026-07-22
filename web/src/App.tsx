@@ -13,6 +13,8 @@ import { DespesasPage } from './features/financeiro/DespesasPage'
 import { ProducaoPage } from './features/producao/ProducaoPage'
 import { useFirestoreCollection } from './hooks/useFirestore'
 import { useEffect } from 'react'
+import { Toaster } from 'sonner'
+import { ConfirmProvider } from './contexts/ConfirmContext'
 
 function App() {
   const { data: configs } = useFirestoreCollection<any>('configuracoes')
@@ -27,28 +29,31 @@ function App() {
   }, [configs])
 
   return (
-    <HashRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        
-        {/* Rotas Protegidas */}
-        <Route element={<AuthGuard />}>
-          <Route path="/" element={<AppShell />}>
-            <Route index element={<DashboardPage />} />
-            <Route path="insumos" element={<InsumosPage />} />
-            <Route path="produtos" element={<ProdutosPage />} />
-            <Route path="clientes" element={<ClientesPage />} />
-            <Route path="orcamentos" element={<OrcamentosPage />} />
-            <Route path="pedidos" element={<PedidosPage />} />
-            <Route path="producao" element={<ProducaoPage />} />
-            <Route path="despesas" element={<DespesasPage />} />
-            <Route path="configuracoes" element={<ConfiguracoesPage />} />
+    <ConfirmProvider>
+      <HashRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          
+          {/* Rotas Protegidas */}
+          <Route element={<AuthGuard />}>
+            <Route path="/" element={<AppShell />}>
+              <Route index element={<DashboardPage />} />
+              <Route path="insumos" element={<InsumosPage />} />
+              <Route path="produtos" element={<ProdutosPage />} />
+              <Route path="clientes" element={<ClientesPage />} />
+              <Route path="orcamentos" element={<OrcamentosPage />} />
+              <Route path="pedidos" element={<PedidosPage />} />
+              <Route path="producao" element={<ProducaoPage />} />
+              <Route path="despesas" element={<DespesasPage />} />
+              <Route path="configuracoes" element={<ConfiguracoesPage />} />
+            </Route>
           </Route>
-        </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </HashRouter>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </HashRouter>
+      <Toaster position="top-center" richColors />
+    </ConfirmProvider>
   )
 }
 

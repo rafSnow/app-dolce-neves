@@ -6,6 +6,7 @@ import { usePWAInstall } from '@/hooks/usePWAInstall'
 import { useBackup } from '@/hooks/useBackup'
 import { useRef } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
+import { toast } from 'sonner'
 
 export function ConfiguracoesPage() {
   const { user } = useAuth()
@@ -52,9 +53,9 @@ export function ConfiguracoesPage() {
     if (!fileToImport) return
     try {
       await importData(fileToImport)
-      alert('Backup restaurado com sucesso!')
+      toast.success('Backup restaurado com sucesso!')
     } catch (error) {
-      alert('Falha ao restaurar o backup.')
+      toast.error('Falha ao restaurar o backup.')
     } finally {
       setFileToImport(null)
       if (fileInputRef.current) {
