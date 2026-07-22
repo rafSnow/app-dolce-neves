@@ -281,28 +281,16 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
       total += custoInsumosExtras * (1 + lucroPercentualExtras / 100)
     }
 
-    // 4. Calcula o Custo Total da Produção do Orçamento
-    let sumInsumos = custoInsumosExtras
-    // Soma o custo dos insumos já em gruposInsumos
+    // 4. Calcula o Custo Total da Produção do Orçamento (Sempre reflete o que foi efetivamente gasto)
+    let sumInsumos = 0
+    // Soma o custo real dos insumos que serão usados
     gruposInsumos.forEach(grupo => {
       grupo.itens.forEach(item => {
-        // quantidadeOriginal já representa a receita base
-        sumInsumos += (item.quantidadeOriginal || 0) * (item.custoUnidade || 0)
+        sumInsumos += (item.quantidadeParaBaixar || 0) * (item.custoUnidade || 0)
       })
     })
     
-    // Soma o custo das embalagens extras
-    if (insumosDB) {
-      watchedEmbalagens.forEach(emb => {
-        if (emb.insumoId && emb.quantidade) {
-          const insumoDoc = insumosDB.find((i: any) => i.id === emb.insumoId)
-          if (insumoDoc) {
-            const custoUnidade = insumoDoc.custoPorUnidadeMedida ?? (insumoDoc.pesoVolumeTotal > 0 ? (insumoDoc.precoCompra / insumoDoc.pesoVolumeTotal) : 0)
-            sumInsumos += custoUnidade * emb.quantidade
-          }
-        }
-      })
-    }
+
 
     const valorTrabalhoCalculado = (tempoTotal / 60) * valorHoraTrabalhada
     const lucroFinal = total - (sumInsumos + valorTrabalhoCalculado)
