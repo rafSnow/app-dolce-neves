@@ -131,6 +131,33 @@ export function ComprovantePDF({ pedido, nomeNegocio, isOrcamento }: Props) {
     return d.toLocaleDateString('pt-BR')
   }
 
+  // Rateio proporcional de embalagens e insumos extras nos itens do pedido
+  const totalBaseItens = pedido.itens?.reduce((acc: number, item: any) => acc + (item.valorItem || 0), 0) || 0
+  const valorExtras = Math.max(0, (pedido.valorTotal || 0) - totalBaseItens)
+  
+  let totalDistribuido = 0
+  const itensProcessados = pedido.itens?.map((item: any, index: number) => {
+    const isLast = index === pedido.itens.length - 1
+    let share = totalBaseItens > 0 ? (item.valorItem || 0) / totalBaseItens : (1 / pedido.itens.length)
+    let extraParaItem = valorExtras * share
+    
+    if (isLast) {
+      extraParaItem = valorExtras - totalDistribuido
+    } else {
+      extraParaItem = Math.round(extraParaItem * 100) / 100
+      totalDistribuido += extraParaItem
+    }
+    
+    const valorItemFinal = (item.valorItem || 0) + extraParaItem
+    const precoUnitarioFinal = item.quantidade > 0 ? valorItemFinal / item.quantidade : 0
+    
+    return {
+      ...item,
+      precoUnitarioFinal,
+      valorItemFinal
+    }
+  }) || []
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -168,12 +195,12 @@ export function ComprovantePDF({ pedido, nomeNegocio, isOrcamento }: Props) {
             <Text style={styles.col3}>Unitário</Text>
             <Text style={styles.col4}>Subtotal</Text>
           </View>
-          {pedido.itens?.map((item: any, idx: number) => (
+          {itensProcessados.map((item: any, idx: number) => (
             <View key={idx} style={styles.tableRow}>
               <Text style={styles.col1}>{item.produtoNome}</Text>
               <Text style={styles.col2}>{item.quantidade}</Text>
-              <Text style={styles.col3}>{formatCurrency(item.precoUnitarioSnapshot)}</Text>
-              <Text style={styles.col4}>{formatCurrency(item.valorItem)}</Text>
+              <Text style={styles.col3}>{formatCurrency(item.precoUnitarioFinal)}</Text>
+              <Text style={styles.col4}>{formatCurrency(item.valorItemFinal)}</Text>
             </View>
           ))}
         </View>
