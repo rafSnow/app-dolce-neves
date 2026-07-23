@@ -59,13 +59,39 @@ export function ProdutoForm({ initialData, onSubmit, onCancel }: Props) {
   // Watchers para recálculo real-time
   const insumosUsados = watch('insumos') || []
   const rendimento = watch('rendimentoReceita') || 1
-  const margem = watch('margemLucro') || 0
   const tempoEstimadoMinutos = watch('tempoEstimadoMinutos') || 0
+  const margemDesejada = watch('margemLucro') || 0
 
-  const { custoTotal, custoInsumos, custoMaoDeObra } = calcularCustoTotalReceita(insumosUsados, tempoEstimadoMinutos, valorHoraTrabalhada)
+  const { custoInsumos, custoMaoDeObra, custoTotal } = calcularCustoTotalReceita(insumosUsados, tempoEstimadoMinutos, valorHoraTrabalhada)
   const custoUnitario = calcularCustoUnitario(custoTotal, rendimento)
-  const precoVendaCalculado = calcularPrecoVendaSugerido(custoUnitario, margem)
+  const precoVendaCalculado = calcularPrecoVendaSugerido(custoUnitario, margemDesejada)
   const alerta = verificarAlertaMargem(precoVendaCalculado, custoUnitario)
+
+  const [localFinalPrice, setLocalFinalPrice] = useState<string>('')
+
+  useEffect(() => {
+    // Sincroniza o preço final caso a margem seja alterada por outro meio,
+    // mas não se o usuário estiver digitando ativamente no campo.
+    if (document.activeElement?.id !== 'precoFinalInput') {
+      setLocalFinalPrice(precoVendaCalculado.toFixed(2))
+    }
+  }, [precoVendaCalculado])
+
+  const handleFinalPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    setLocalFinalPrice(val)
+    
+    const finalPrice = parseFloat(val)
+    if (!isNaN(finalPrice)) {
+      if (custoUnitario > 0) {
+        let newMargin = ((finalPrice - custoUnitario) / custoUnitario) * 100
+        if (newMargin < 0) newMargin = 0
+        setValue('margemLucro', newMargin)
+      } else {
+        setValue('margemLucro', 100)
+      }
+    }
+  }
   
   const precoVendaReceitaTotal = precoVendaCalculado * rendimento
   const lucroReceitaTotal = alerta.lucroReal * rendimento
@@ -297,21 +323,12 @@ export function ProdutoForm({ initialData, onSubmit, onCancel }: Props) {
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-100 font-black text-2xl">R$</span>
                 <input 
+                  id="precoFinalInput"
                   type="number" 
                   step="0.01" 
-                  value={precoVendaCalculado.toFixed(2)}
-                  onChange={(e) => {
-                    const finalPrice = parseFloat(e.target.value)
-                    if (!isNaN(finalPrice)) {
-                      if (custoUnitario > 0) {
-                        let newMargin = ((finalPrice - custoUnitario) / custoUnitario) * 100
-                        if (newMargin < 0) newMargin = 0
-                        setValue('margemLucro', newMargin)
-                      } else {
-                        setValue('margemLucro', 100)
-                      }
-                    }
-                  }}
+                  value={localFinalPrice}
+                  onChange={handleFinalPriceChange}
+                  onBlur={() => setLocalFinalPrice(precoVendaCalculado.toFixed(2))}
                   className="w-full bg-white/20 backdrop-blur-md border border-white/30 text-white font-black text-4xl tracking-tight rounded-2xl py-3 pl-14 pr-4 focus:outline-none focus:ring-4 focus:ring-emerald-400/50 transition-all placeholder-emerald-100/50"
                   placeholder="0.00"
                 />
