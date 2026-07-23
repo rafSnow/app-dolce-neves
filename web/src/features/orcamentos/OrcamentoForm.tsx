@@ -29,7 +29,6 @@ const orcamentoSchema = z.object({
   insumosCustomizados: z.any().optional(),
   insumosAgrupadosEditados: z.any().optional(),
   margemLucro: z.number().min(0, 'Inválido'),
-  comissaoPercentual: z.number().min(0),
   valorHoraTrabalhada: z.number().min(0),
   tempoEstimadoTotal: z.number().min(0),
   custoInsumosTotal: z.number().min(0),
@@ -70,7 +69,6 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
       insumosCustomizados: [],
       insumosAgrupadosEditados: [],
       margemLucro: 100, // 100% de markup por padrão
-      comissaoPercentual: 0,
       valorHoraTrabalhada: 0,
       tempoEstimadoTotal: 0,
       custoInsumosTotal: 0,
@@ -276,24 +274,17 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
     const margemOrcamento = watch('margemLucro') || 0
     const precoVendaBase = custoCruTotal * (1 + (margemOrcamento / 100))
 
-    // 6. Calcula comissão global do orçamento (gross-up para repasse)
-    const comissaoGlobal = watch('comissaoPercentual') || 0
-    let totalComComissao = precoVendaBase
-    if (comissaoGlobal > 0 && comissaoGlobal < 100) {
-      totalComComissao = precoVendaBase / (1 - (comissaoGlobal / 100))
-    }
+    const lucroFinal = precoVendaBase - custoCruTotal // O lucro considera apenas o markup
 
-    const lucroFinal = precoVendaBase - custoCruTotal // O lucro considera apenas o markup, repassando o custo da comissão integralmente
-
-    setValue('valorTotal', totalComComissao)
+    setValue('valorTotal', precoVendaBase)
     setValue('tempoEstimadoTotal', Math.round(tempoTotal))
     
     // Agora preenchemos corretamente os custos para que a Precificação Mágica do Orçamento funcione
-    setValue('valorTotalSugerido', totalComComissao)
+    setValue('valorTotalSugerido', precoVendaBase)
     setValue('custoInsumosTotal', custoCruInsumos)
     setValue('custoMaoDeObraTotal', valorTrabalhoCalculado)
     setValue('lucroEstimado', lucroFinal)
-  }, [JSON.stringify(watchedItens), JSON.stringify(watchedEmbalagens), watch('margemLucro'), watch('comissaoPercentual'), produtosDB, insumosDB, configs, gruposInsumos, setValue, valorHoraTrabalhada])
+  }, [JSON.stringify(watchedItens), JSON.stringify(watchedEmbalagens), watch('margemLucro'), produtosDB, insumosDB, configs, gruposInsumos, setValue, valorHoraTrabalhada])
 
   const handleUpdateQty = (gIndex: number, iIndex: number, newVal: number) => {
     // Usa getValues para ter o estado mais atual sem depender de closure stale
@@ -582,25 +573,8 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
         )}
 
       </div>
-
       {/* RENDERIZA O TOTAL DO ORÇAMENTO IGUAL AO PEDIDO */}
       <div className="mb-4 bg-dolce-rosa-claro/20 p-5 rounded-2xl border border-dolce-rosa-claro/50 flex flex-col gap-4">
-        
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-dolce-rosa-claro/30 pb-4">
-          <div className="flex flex-col">
-            <label className="text-sm font-bold text-dolce-marrom/70 uppercase">Taxa / Comissão (%)</label>
-            <span className="text-xs text-dolce-marrom/50 mt-1">Acrescido no valor final (ex: taxa da maquininha).</span>
-          </div>
-          <div className="relative w-32">
-            <input 
-              type="number" step="0.1" 
-              {...register('comissaoPercentual', { valueAsNumber: true })} 
-              className="w-full bg-white border border-dolce-rosa-claro/50 rounded-xl px-4 py-2 text-dolce-marrom font-bold focus:ring-2 focus:ring-dolce-rosa focus:border-transparent pr-8 text-right" 
-            />
-            <span className="absolute right-3 top-2.5 text-gray-400 font-bold">%</span>
-          </div>
-        </div>
-
         <div className="flex justify-between items-center">
           <div className="flex flex-col">
             <span className="text-sm font-bold text-dolce-marrom/70 uppercase">Total do Orçamento</span>
