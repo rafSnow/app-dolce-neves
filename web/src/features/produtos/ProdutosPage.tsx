@@ -146,17 +146,38 @@ export function ProdutosPage() {
             </div>
 
             {/* Card Body (Custos) */}
-            <div className="p-5 flex flex-col gap-3 flex-1 bg-gray-50/30">
-              <div className="flex justify-between items-center p-3 bg-white rounded-xl border border-gray-100 shadow-sm">
-                <span className="text-sm font-semibold text-dolce-marrom/70">Custo (un.)</span>
+            <div className="p-5 flex flex-col gap-2 flex-1 bg-gray-50/30">
+              <div className="flex justify-between items-center text-sm mb-1">
+                <span className="font-semibold text-dolce-marrom/70">Custo (Un.)</span>
                 <span className="font-bold text-rose-600">
                   R$ {produto.custoUnitario?.toFixed(2) || '0.00'}
                 </span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-xl border border-emerald-100 shadow-sm">
-                <span className="text-sm font-semibold text-emerald-800">Venda Sugerida</span>
-                <span className="font-black text-lg text-emerald-700">
+              <div className="flex justify-between items-center text-sm mb-1">
+                <span className="font-semibold text-emerald-800">Venda Sugerida (Un.)</span>
+                <span className="font-bold text-emerald-700">
                   R$ {produto.precoVendaCalculado?.toFixed(2) || '0.00'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-sm mb-3">
+                <span className="font-semibold text-blue-700">Lucro (Un.)</span>
+                <span className="font-bold text-blue-700">
+                  R$ {produto.lucroUnitario?.toFixed(2) || '0.00'}
+                </span>
+              </div>
+              
+              <div className="h-px bg-gray-200/60 w-full mb-3"></div>
+
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-medium text-dolce-marrom/60">Faturamento da Receita:</span>
+                <span className="font-bold text-dolce-marrom">
+                  R$ {produto.faturamentoTotal?.toFixed(2) || '0.00'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-medium text-dolce-marrom/60">Lucro da Receita:</span>
+                <span className="font-bold text-dolce-marrom">
+                  R$ {produto.lucroTotal?.toFixed(2) || '0.00'}
                 </span>
               </div>
             </div>
