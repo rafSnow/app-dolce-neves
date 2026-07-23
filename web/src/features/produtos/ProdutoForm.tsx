@@ -303,13 +303,36 @@ export function ProdutoForm({ initialData, onSubmit, onCancel }: Props) {
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
           
           <div className="flex flex-col sm:flex-row justify-between items-center sm:items-end gap-3 mb-4">
-            <div>
-              <div className="text-emerald-100 font-medium text-sm mb-1">Preço Sugerido (Unitário)</div>
-              <div className="text-4xl font-black tracking-tight">R$ {precoVendaCalculado.toFixed(2)}</div>
+            <div className="flex-1">
+              <label className="block text-emerald-100 font-bold text-xs tracking-wide uppercase mb-1.5 cursor-pointer">Definir Preço de Venda Final (R$)</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-100 font-black text-2xl">R$</span>
+                <input 
+                  type="number" 
+                  step="0.01" 
+                  value={precoVendaCalculado.toFixed(2)}
+                  onChange={(e) => {
+                    const finalPrice = parseFloat(e.target.value)
+                    if (!isNaN(finalPrice)) {
+                      if (custoUnitario > 0) {
+                        const baseComissao = custoUnitario * (comissao / 100)
+                        let newMargin = ((finalPrice - custoUnitario - baseComissao) / custoUnitario) * 100
+                        if (newMargin < 0) newMargin = 0 // Prevents negative margin in DB, although theoretically possible, typically business won't save negative margin here
+                        setValue('margemLucro', newMargin)
+                      } else {
+                        setValue('margemLucro', 100)
+                      }
+                    }
+                  }}
+                  className="w-full bg-white/20 backdrop-blur-md border border-white/30 text-white font-black text-4xl tracking-tight rounded-2xl py-3 pl-14 pr-4 focus:outline-none focus:ring-4 focus:ring-emerald-400/50 transition-all placeholder-emerald-100/50"
+                  placeholder="0.00"
+                />
+              </div>
             </div>
-            <div className="bg-white/20 px-4 py-2 rounded-xl backdrop-blur-md border border-white/10 text-right w-full sm:w-auto">
-              <div className="text-[10px] text-emerald-100 uppercase tracking-widest font-bold mb-0.5">Lucro Limpo (Unitário)</div>
-              <div className="text-xl font-bold">R$ {alerta.lucroReal.toFixed(2)} <span className="text-xs font-medium opacity-80">({alerta.margemReal.toFixed(1)}%)</span></div>
+            <div className="bg-white/20 px-5 py-4 rounded-2xl backdrop-blur-md border border-white/10 text-right min-w-[160px]">
+              <div className="text-[10px] text-emerald-100 uppercase tracking-widest font-bold mb-1">Lucro Limpo (Unitário)</div>
+              <div className="text-2xl font-black">R$ {alerta.lucroReal.toFixed(2)}</div>
+              <div className="text-sm font-bold opacity-90 mt-0.5">({alerta.margemReal.toFixed(1)}%)</div>
             </div>
           </div>
 
