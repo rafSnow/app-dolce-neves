@@ -28,7 +28,7 @@ const orcamentoSchema = z.object({
   })).optional(),
   insumosCustomizados: z.any().optional(),
   insumosAgrupadosEditados: z.any().optional(),
-  markupPercentual: z.number().min(0),
+  margemLucro: z.number().min(0, 'Inválido'),
   comissaoPercentual: z.number().min(0),
   valorHoraTrabalhada: z.number().min(0),
   tempoEstimadoTotal: z.number().min(0),
@@ -48,12 +48,12 @@ interface Props {
 }
 
 export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
-  const [step, setStep] = useState<1 | 2>(1)
+  const [step, setStep] = useState<1 | 2 | 3>(1)
   const [isChangingStep, setIsChangingStep] = useState(false)
   
   const handleNextStep = () => {
     setIsChangingStep(true)
-    setStep(2)
+    setStep(s => Math.min(s + 1, 3) as any)
     setTimeout(() => setIsChangingStep(false), 500)
   }
   
@@ -69,7 +69,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
       embalagensExtras: [],
       insumosCustomizados: [],
       insumosAgrupadosEditados: [],
-      markupPercentual: 0,
+      margemLucro: 100, // 100% de markup por padrão
       comissaoPercentual: 0,
       valorHoraTrabalhada: 0,
       tempoEstimadoTotal: 0,
@@ -235,12 +235,11 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
 
   // LÓGICA DE PRECIFICAÇÃO (Igual a PedidoForm)
   useEffect(() => {
-    let total = 0
+    let custoCruInsumos = 0
     let tempoTotal = 0
 
-    // 1. Soma dos produtos originais
+    // 1. Custo dos produtos originais e Mão de Obra
     watchedItens.forEach(item => {
-      total += (item.valorItem || 0)
       if (produtosDB) {
         const prod = produtosDB.find(p => p.id === item.produtoId)
         if (prod && prod.tempoEstimadoMinutos) {
@@ -249,98 +248,52 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
       }
     })
 
-    // 2. Soma das Embalagens Extras
+    // 2. Custo das Embalagens Extras
     if (insumosDB) {
-      // Find the primary margin (from the first item, or 0 if none)
-      let primaryMarkup = 0
-      if (watchedItens.length > 0 && produtosDB) {
-        const firstProd = produtosDB.find((p: any) => p.id === watchedItens[0].produtoId)
-        if (firstProd) {
-          primaryMarkup = firstProd.margemLucro || 0
-        }
-      }
-
       watchedEmbalagens.forEach(emb => {
         if (emb.insumoId && emb.quantidade) {
           const insumoDoc = insumosDB.find((i: any) => i.id === emb.insumoId)
           if (insumoDoc) {
             const custoUnidade = insumoDoc.custoPorUnidadeMedida ?? (insumoDoc.pesoVolumeTotal > 0 ? (insumoDoc.precoCompra / insumoDoc.pesoVolumeTotal) : 0)
-            const custoEmbalagemTotal = custoUnidade * emb.quantidade
-            // Aplicar margem sobre a embalagem extra
-            const valorVendaEmbalagem = custoEmbalagemTotal * (1 + (primaryMarkup) / 100)
-            total += valorVendaEmbalagem
+            custoCruInsumos += custoUnidade * emb.quantidade
           }
         }
       })
     }
     
-    // 3. Acrescenta custo e lucro de Insumos Extras com base na FT específica
-    let custoInsumosExtras = 0
-    let lucroInsumosExtrasAplicado = 0
-    
-    gruposInsumos.forEach(grupo => {
-      // Tenta achar a FT correspondente a este grupo para pegar a margem
-      let markupFT = 0
-      if (produtosDB) {
-        const prod = produtosDB.find((p: any) => p.nome === grupo.titulo)
-        if (prod) {
-          markupFT = prod.margemLucro || 0
-        } else {
-          // Se for "Geral", usa a primary margin
-          if (watchedItens.length > 0) {
-            const firstProd = produtosDB.find((p: any) => p.id === watchedItens[0].produtoId)
-            if (firstProd) {
-              markupFT = firstProd.margemLucro || 0
-            }
-          }
-        }
-      }
-
-      grupo.itens.forEach((item: any) => {
-        const diff = (item.quantidadeParaBaixar || 0) - (item.quantidadeOriginal || 0)
-        // Somente extra, nunca a menos (se pediu pra tirar, nao desconta)
-        if (diff > 0) {
-          const custoExtraItem = diff * (item.custoUnidade || 0)
-          custoInsumosExtras += custoExtraItem
-          lucroInsumosExtrasAplicado += custoExtraItem * (1 + (markupFT) / 100)
-        }
-      })
-    })
-
-    if (lucroInsumosExtrasAplicado > 0) {
-      total += lucroInsumosExtrasAplicado
-    }
-
-    // 4. Calcula o Custo Total da Produção do Orçamento (Sempre reflete o que foi efetivamente gasto)
-    let sumInsumos = 0
-    // Soma o custo real dos insumos que serão usados
+    // 3. Soma o custo real dos insumos que serão usados na FT
     gruposInsumos.forEach(grupo => {
       grupo.itens.forEach(item => {
-        sumInsumos += (item.quantidadeParaBaixar || 0) * (item.custoUnidade || 0)
+        custoCruInsumos += (item.quantidadeParaBaixar || 0) * (item.custoUnidade || 0)
       })
     })
-    
 
-
+    // 4. Calcula o Custo Total da Produção do Orçamento (Sempre reflete o que foi efetivamente gasto)
     const valorTrabalhoCalculado = (tempoTotal / 60) * valorHoraTrabalhada
-    const lucroFinal = total - (sumInsumos + valorTrabalhoCalculado)
-    
-    // Calcula comissão global do orçamento (gross-up para que o subtotal seja preservado após o desconto da taxa)
+    const custoCruTotal = custoCruInsumos + valorTrabalhoCalculado
+
+    // 5. Aplicar Margem de Lucro do Orçamento
+    const margemOrcamento = watch('margemLucro') || 0
+    const precoVendaBase = custoCruTotal * (1 + (margemOrcamento / 100))
+
+    // 6. Calcula comissão global do orçamento (gross-up para repasse)
     const comissaoGlobal = watch('comissaoPercentual') || 0
-    let totalComComissao = total
+    let totalComComissao = precoVendaBase
     if (comissaoGlobal > 0 && comissaoGlobal < 100) {
-      totalComComissao = total / (1 - (comissaoGlobal / 100))
+      totalComComissao = precoVendaBase / (1 - (comissaoGlobal / 100))
     }
+
+    const lucroFinal = precoVendaBase - custoCruTotal // O lucro considera apenas o markup, repassando o custo da comissão integralmente
 
     setValue('valorTotal', totalComComissao)
     setValue('tempoEstimadoTotal', Math.round(tempoTotal))
     
     // Agora preenchemos corretamente os custos para que a Precificação Mágica do Orçamento funcione
     setValue('valorTotalSugerido', totalComComissao)
-    setValue('custoInsumosTotal', sumInsumos)
+    setValue('custoInsumosTotal', custoCruInsumos)
     setValue('custoMaoDeObraTotal', valorTrabalhoCalculado)
     setValue('lucroEstimado', lucroFinal)
-  }, [JSON.stringify(watchedItens), JSON.stringify(watchedEmbalagens), watch('comissaoPercentual'), produtosDB, insumosDB, configs, setValue])
+  }, [JSON.stringify(watchedItens), JSON.stringify(watchedEmbalagens), watch('margemLucro'), watch('comissaoPercentual'), produtosDB, insumosDB, configs, gruposInsumos, setValue, valorHoraTrabalhada])
 
   const handleUpdateQty = (gIndex: number, iIndex: number, newVal: number) => {
     // Usa getValues para ter o estado mais atual sem depender de closure stale
@@ -383,12 +336,15 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
     <form onSubmit={handleSubmit(onFormSubmit, onFormError)} className="flex flex-col h-full bg-white relative">
       
       {/* TABS HEADER */}
-      <div className="flex bg-gray-50 p-2 rounded-xl mb-6 shadow-inner border border-gray-100">
-        <button type="button" onClick={() => setStep(1)} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm transition-all ${step === 1 ? 'bg-white text-dolce-rosa shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}>
+      <div className="flex bg-gray-50 p-2 rounded-xl mb-6 shadow-inner border border-gray-100 overflow-x-auto whitespace-nowrap scrollbar-hide">
+        <button type="button" onClick={() => setStep(1)} className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-bold text-sm transition-all ${step === 1 ? 'bg-white text-dolce-rosa shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}>
           <ShoppingBag className="w-4 h-4" /> 1. Itens
         </button>
-        <button type="button" onClick={() => setStep(2)} className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm transition-all ${step === 2 ? 'bg-white text-dolce-rosa shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}>
+        <button type="button" onClick={() => setStep(2)} className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-bold text-sm transition-all ${step === 2 ? 'bg-white text-dolce-rosa shadow-sm border border-gray-100' : 'text-gray-400 hover:text-gray-600'}`}>
           <Package className="w-4 h-4" /> 2. Insumos
+        </button>
+        <button type="button" onClick={() => setStep(3)} className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-bold text-sm transition-all ${step === 3 ? 'bg-white text-emerald-600 shadow-sm border border-emerald-100' : 'text-gray-400 hover:text-gray-600'}`}>
+          <Calculator className="w-4 h-4" /> 3. Rentabilidade
         </button>
       </div>
 
@@ -445,11 +401,10 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
                             const p = produtosDB?.find(x => x.id === val)
                             if (p) {
                               setValue(`itens.${index}.produtoNome`, p.nome)
-                              // Lógica do Pedido: pega o preço de venda da receita inteira
-                              const precoReceitaInteira = p.precoVendaCalculado * (p.rendimentoReceita || 1)
-                              setValue(`itens.${index}.precoUnitarioSnapshot`, precoReceitaInteira)
-                              const qtd = watch(`itens.${index}.quantidade`) || 1
-                              setValue(`itens.${index}.valorItem`, precoReceitaInteira * qtd)
+                              // Na nova arquitetura, o item.valorItem da Ficha Técnica é apenas o custo cru, pois a margem é global
+                              const custoCruReceitaInteira = p.custoTotalReceita * (p.rendimentoReceita || 1)
+                              setValue(`itens.${index}.precoUnitarioSnapshot`, custoCruReceitaInteira)
+                              setValue(`itens.${index}.valorItem`, custoCruReceitaInteira * (watchedItens[index]?.quantidade || 1))
                             }
                           }}
                           placeholder="Selecione um produto..."
@@ -578,6 +533,54 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
           </div>
         )}
 
+        {/* STEP 3: PRECIFICAÇÃO E RENTABILIDADE */}
+        {step === 3 && (
+          <div className="space-y-6">
+            <div className="bg-emerald-50/50 p-6 rounded-3xl border border-emerald-100">
+              <div className="mb-6">
+                <h3 className="font-bold text-xl text-dolce-marrom">Defina sua margem de lucro</h3>
+                <p className="text-sm text-dolce-marrom/70 mt-1">Itens e insumos já foram adicionados. Agora ajuste a rentabilidade do orçamento.</p>
+              </div>
+
+              {/* Form Controls */}
+              <div className="grid grid-cols-1 gap-4 mb-6">
+                <div>
+                  <label className="block text-xs font-bold text-emerald-800 mb-1.5 uppercase tracking-wide">Margem de Lucro Desejada (%)</label>
+                  <input 
+                    type="number" step="0.1" 
+                    {...register('margemLucro', { valueAsNumber: true })} 
+                    className="w-full bg-white border border-emerald-200 text-emerald-900 font-bold rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all text-lg" 
+                  />
+                </div>
+              </div>
+
+              {/* Cards Indicadores */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-rose-100 relative group cursor-help">
+                  <div className="text-xs font-bold text-rose-600/70 uppercase tracking-wider mb-1">Custo Total</div>
+                  <div className="text-2xl font-black text-rose-600">
+                    R$ {((watch('custoInsumosTotal') || 0) + (watch('custoMaoDeObraTotal') || 0)).toFixed(2)}
+                  </div>
+                </div>
+                
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-emerald-200 relative overflow-hidden">
+                  <div className="text-xs font-bold text-emerald-600/70 uppercase tracking-wider mb-1">Lucro Estimado</div>
+                  <div className="text-2xl font-black text-emerald-700 relative z-10">
+                    R$ {(watch('lucroEstimado') || 0).toFixed(2)}
+                  </div>
+                </div>
+
+                <div className="bg-emerald-600 p-4 rounded-2xl shadow-md border border-emerald-700 relative overflow-hidden text-white">
+                  <div className="text-xs font-bold text-emerald-100 uppercase tracking-wider mb-1">Preço de Venda</div>
+                  <div className="text-2xl font-black">
+                    R$ {(watch('valorTotalSugerido') || 0).toFixed(2)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
 
       {/* RENDERIZA O TOTAL DO ORÇAMENTO IGUAL AO PEDIDO */}
@@ -615,7 +618,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
           </button>
         )}
         
-        {step < 2 ? (
+        {step < 3 ? (
           <button type="button" onClick={handleNextStep} className="flex-1 flex items-center justify-center gap-2 bg-dolce-rosa text-white font-bold py-3 rounded-xl hover:bg-dolce-rosa/90 transition-colors shadow-sm">
             Próximo Passo <ChevronRight className="w-5 h-5" />
           </button>

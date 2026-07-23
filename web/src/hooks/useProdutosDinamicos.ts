@@ -5,19 +5,15 @@ import type { InsumoFormData } from '@/features/insumos/InsumoForm'
 
 export type ProdutoDinamico = ProdutoFormData & { 
   id: string
-  precoVendaCalculado: number
   custoTotalReceita: number
   custoUnitario: number
-  faturamentoTotal: number
-  lucroTotal: number
-  lucroUnitario: number
 }
 
 export function useProdutosDinamicos() {
   const { data: produtosDB, isLoading: isLoadingProd } = useFirestoreCollection<ProdutoFormData & {id: string}>('produtos')
   const { data: insumosDB, isLoading: isLoadingIns } = useFirestoreCollection<InsumoFormData & {id: string}>('insumos')
   const { data: configs, isLoading: isLoadingConfig } = useFirestoreCollection<any>('configuracoes')
-  const { calcularCustoUnitario, calcularPrecoVendaSugerido, verificarAlertaMargem } = useCalculadoraPrecificacao()
+  const { calcularCustoUnitario } = useCalculadoraPrecificacao()
 
   const isLoading = isLoadingProd || isLoadingIns || isLoadingConfig
 
@@ -47,21 +43,12 @@ export function useProdutosDinamicos() {
       custoTotalAtualizado += custoMaoDeObra
 
       const custoUnitario = calcularCustoUnitario(custoTotalAtualizado, produto.rendimentoReceita)
-      const precoCalculado = calcularPrecoVendaSugerido(custoUnitario, produto.margemLucro || 0)
-      
-      const alerta = verificarAlertaMargem(precoCalculado, custoUnitario)
-      const faturamentoTotal = precoCalculado * (produto.rendimentoReceita || 1)
-      const lucroTotal = alerta.lucroReal * (produto.rendimentoReceita || 1)
 
       return {
         ...produto,
         insumos: insumosAtualizados,
         custoTotalReceita: custoTotalAtualizado,
-        custoUnitario,
-        precoVendaCalculado: precoCalculado,
-        faturamentoTotal,
-        lucroTotal,
-        lucroUnitario: alerta.lucroReal
+        custoUnitario
       }
     })
   }

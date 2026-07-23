@@ -12,7 +12,6 @@ const produtoSchema = z.object({
   nome: z.string().min(1, 'Nome é obrigatório'),
   rendimentoReceita: z.number().min(1, 'Mínimo de 1'),
   tempoEstimadoMinutos: z.number().min(0, 'Mínimo de 0').optional(),
-  margemLucro: z.number().min(0, 'Inválido'),
   ativo: z.boolean(),
   insumos: z.array(z.object({
     insumoId: z.string().min(1, 'Selecione um insumo'),
@@ -41,7 +40,6 @@ export function ProdutoForm({ initialData, onSubmit, onCancel }: Props) {
       nome: '',
       rendimentoReceita: 1,
       tempoEstimadoMinutos: 0,
-      margemLucro: 100, // Margem padrão
       ativo: true,
       insumos: []
     }
@@ -60,41 +58,9 @@ export function ProdutoForm({ initialData, onSubmit, onCancel }: Props) {
   const insumosUsados = watch('insumos') || []
   const rendimento = watch('rendimentoReceita') || 1
   const tempoEstimadoMinutos = watch('tempoEstimadoMinutos') || 0
-  const margemDesejada = watch('margemLucro') || 0
 
   const { custoInsumos, custoMaoDeObra, custoTotal } = calcularCustoTotalReceita(insumosUsados, tempoEstimadoMinutos, valorHoraTrabalhada)
   const custoUnitario = calcularCustoUnitario(custoTotal, rendimento)
-  const precoVendaCalculado = calcularPrecoVendaSugerido(custoUnitario, margemDesejada)
-  const alerta = verificarAlertaMargem(precoVendaCalculado, custoUnitario)
-
-  const [localFinalPrice, setLocalFinalPrice] = useState<string>('')
-
-  useEffect(() => {
-    // Sincroniza o preço final caso a margem seja alterada por outro meio,
-    // mas não se o usuário estiver digitando ativamente no campo.
-    if (document.activeElement?.id !== 'precoFinalInput') {
-      setLocalFinalPrice(precoVendaCalculado.toFixed(2))
-    }
-  }, [precoVendaCalculado])
-
-  const handleFinalPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value
-    setLocalFinalPrice(val)
-    
-    const finalPrice = parseFloat(val)
-    if (!isNaN(finalPrice)) {
-      if (custoUnitario > 0) {
-        let newMargin = ((finalPrice - custoUnitario) / custoUnitario) * 100
-        if (newMargin < 0) newMargin = 0
-        setValue('margemLucro', newMargin)
-      } else {
-        setValue('margemLucro', 100)
-      }
-    }
-  }
-  
-  const precoVendaReceitaTotal = precoVendaCalculado * rendimento
-  const lucroReceitaTotal = alerta.lucroReal * rendimento
 
   useEffect(() => {
     if (initialData) reset(initialData)
@@ -272,17 +238,15 @@ export function ProdutoForm({ initialData, onSubmit, onCancel }: Props) {
         />
       )}
 
-      {/* PRECIFICAÇÃO E DASHBOARD FINANCEIRO */}
-      <div className="bg-emerald-50/50 p-5 rounded-3xl border border-emerald-100">
-        <h4 className="font-bold text-xl text-dolce-marrom mb-5">Precificação Mágica</h4>
+      {/* RESUMO DOS CUSTOS */}
+      <div className="bg-blue-50/50 p-5 rounded-3xl border border-blue-100 mt-6">
+        <h4 className="font-bold text-xl text-dolce-marrom mb-5">Resumo dos Custos</h4>
         
-        {/* Top Indicators */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-2 gap-4">
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-rose-100 relative group cursor-help">
-            <div className="text-xs font-bold text-rose-600/70 uppercase tracking-wider mb-1">Custo da Receita Inteira</div>
+            <div className="text-xs font-bold text-rose-600/70 uppercase tracking-wider mb-1">Custo Total da Receita</div>
             <div className="text-2xl font-black text-rose-600">R$ {custoTotal.toFixed(2)}</div>
             
-            {/* Tooltip Hover for breakdown */}
             <div className="absolute hidden group-hover:block bottom-full left-0 mb-2 w-48 bg-gray-800 text-white text-xs p-2 rounded-lg shadow-xl z-50">
               <div className="flex justify-between mb-1">
                 <span className="text-gray-400">Insumos:</span>
@@ -300,85 +264,6 @@ export function ProdutoForm({ initialData, onSubmit, onCancel }: Props) {
             <div className="text-2xl font-black text-blue-700 relative z-10">R$ {custoUnitario.toFixed(2)}</div>
           </div>
         </div>
-
-        {/* Form Controls */}
-        <div className="grid grid-cols-1 gap-4 mb-6">
-          <div>
-            <label className="block text-xs font-bold text-emerald-800 mb-1.5 uppercase tracking-wide">Margem de Lucro Desejada (%)</label>
-            <input 
-              type="number" step="0.1" 
-              {...register('margemLucro', { valueAsNumber: true })} 
-              className="w-full bg-white border border-emerald-200 text-emerald-900 font-bold rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all text-lg" 
-            />
-          </div>
-        </div>
-
-        {/* Final Price Block */}
-        <div className="bg-emerald-600 p-5 rounded-2xl shadow-[0_8px_30px_rgba(5,150,105,0.3)] text-white mb-4 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
-          
-          <div className="flex flex-col sm:flex-row justify-between items-center sm:items-end gap-3 mb-4">
-            <div className="flex-1">
-              <label className="block text-emerald-100 font-bold text-xs tracking-wide uppercase mb-1.5 cursor-pointer">Definir Preço de Venda Final (R$)</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-100 font-black text-2xl">R$</span>
-                <input 
-                  id="precoFinalInput"
-                  type="number" 
-                  step="0.01" 
-                  value={localFinalPrice}
-                  onChange={handleFinalPriceChange}
-                  onBlur={() => setLocalFinalPrice(precoVendaCalculado.toFixed(2))}
-                  className="w-full bg-white/20 backdrop-blur-md border border-white/30 text-white font-black text-4xl tracking-tight rounded-2xl py-3 pl-14 pr-4 focus:outline-none focus:ring-4 focus:ring-emerald-400/50 transition-all placeholder-emerald-100/50"
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-            <div className="bg-white/20 px-5 py-4 rounded-2xl backdrop-blur-md border border-white/10 text-right min-w-[160px]">
-              <div className="text-[10px] text-emerald-100 uppercase tracking-widest font-bold mb-1">Lucro Limpo (Unitário)</div>
-              <div className="text-2xl font-black">R$ {alerta.lucroReal.toFixed(2)}</div>
-              <div className="text-sm font-bold opacity-90 mt-0.5">({alerta.margemReal.toFixed(1)}%)</div>
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-emerald-500/50 flex flex-col sm:flex-row justify-between gap-3 text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-300"></div>
-              <span className="text-emerald-100 font-medium">Faturamento da Receita Inteira:</span>
-              <strong className="font-bold">R$ {precoVendaReceitaTotal.toFixed(2)}</strong>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-300"></div>
-              <span className="text-emerald-100 font-medium">Lucro da Receita Inteira:</span>
-              <strong className="font-bold">R$ {lucroReceitaTotal.toFixed(2)}</strong>
-            </div>
-          </div>
-        </div>
-
-        {/* ALERTS */}
-        {alerta.isPrejuizo && (
-          <div className="p-4 bg-rose-100 text-rose-800 rounded-xl border border-rose-300 text-sm animate-in fade-in zoom-in-95 flex gap-3 shadow-sm">
-            <svg className="w-6 h-6 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <div>
-              <strong className="block text-base mb-1">Atenção: Prejuízo Detectado!</strong>
-              O preço de venda sugerido não cobre os custos da sua Ficha Técnica após o desconto das taxas (Cartão/Comissão). 
-              Aumente a Margem de Lucro imediatamente.
-            </div>
-          </div>
-        )}
-        {!alerta.isPrejuizo && alerta.isMargemBaixa && (
-          <div className="p-4 bg-orange-100 text-orange-800 rounded-xl border border-orange-300 text-sm animate-in fade-in zoom-in-95 flex gap-3 shadow-sm">
-            <svg className="w-6 h-6 text-orange-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div>
-              <strong className="block text-base mb-1">Aviso: Margem Baixa</strong>
-              Sua margem de lucro real está abaixo de 20%. Isso deixa o negócio vulnerável a pequenas variações nos preços dos ingredientes.
-            </div>
-          </div>
-        )}
       </div>
 
       {/* AÇÕES FINAIS */}

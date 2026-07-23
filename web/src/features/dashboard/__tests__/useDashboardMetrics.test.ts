@@ -21,6 +21,7 @@ describe('useDashboardMetrics', () => {
           sinal: { valor: 50, status: 'Recebido', forma: 'Pix' },
           restante: { valor: 50, status: 'Pendente', forma: 'Pix' }
         },
+        margemLucro: 100,
         itens: []
       },
       { // Fora do mes
@@ -34,6 +35,7 @@ describe('useDashboardMetrics', () => {
           sinal: { valor: 250, status: 'Recebido', forma: 'Pix' },
           restante: { valor: 250, status: 'Recebido', forma: 'Pix' }
         },
+        margemLucro: 100,
         itens: []
       }
     ] as (PedidoFormData & {id: string})[]

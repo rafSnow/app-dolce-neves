@@ -24,6 +24,7 @@ const pedidoSchema = z.object({
   estoqueBaixado: z.boolean(),
   estimativaTotalMinutos: z.number().optional(),
   status: z.enum(['Aberto', 'Cancelado', 'Entregue']).optional(),
+  margemLucro: z.number().min(0),
   ativo: z.boolean().optional(),
   pagamentos: z.object({
     sinal: pagamentoSchema,
@@ -67,6 +68,7 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
       estoqueBaixado: false,
       estimativaTotalMinutos: 0,
       status: 'Aberto',
+      margemLucro: 100,
       pagamentos: {
         sinal: { valor: 0, status: 'Pendente', forma: 'Pix' },
         restante: { valor: 0, status: 'Pendente', forma: 'Pix' }
@@ -110,11 +112,15 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
       })
     }
 
-    setValue('valorTotal', total)
+    // Aplica a Margem do Pedido sobre o custo cru total
+    const margem = watch('margemLucro') || 100
+    const precoVendaBase = total * (1 + (margem / 100))
+
+    setValue('valorTotal', precoVendaBase)
     setValue('estimativaTotalMinutos', Math.round(totalMinutos))
     // Se não tiver sinal digitado ainda, sugere o valor total para o restante
-    setValue('pagamentos.restante.valor', Math.max(0, total - sinalDigitado))
-  }, [JSON.stringify(itens), JSON.stringify(embalagens), sinalDigitado, setValue, produtosDB, insumosDB])
+    setValue('pagamentos.restante.valor', Math.max(0, precoVendaBase - sinalDigitado))
+  }, [JSON.stringify(itens), JSON.stringify(embalagens), sinalDigitado, setValue, produtosDB, insumosDB, watch('margemLucro')])
 
   const handleSugestaoEmbalagens = () => {
     if (!insumosDB) return
@@ -225,11 +231,11 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
     const prod = produtosDB?.find(p => p.id === id)
     if (prod) {
       setValue(`itens.${index}.produtoNome`, prod.nome)
-      // O preço a ser cobrado agora é o da Receita Completa (Lote)
-      const precoReceitaInteira = prod.precoVendaCalculado * (prod.rendimentoReceita || 1)
-      setValue(`itens.${index}.precoUnitarioSnapshot`, precoReceitaInteira)
+      // O preço a ser cobrado agora baseia-se no Custo Cru (pois a margem é aplicada no total do pedido)
+      const custoCruReceitaInteira = prod.custoTotalReceita * (prod.rendimentoReceita || 1)
+      setValue(`itens.${index}.precoUnitarioSnapshot`, custoCruReceitaInteira)
       const qtd = watch(`itens.${index}.quantidade`) || 1
-      setValue(`itens.${index}.valorItem`, precoReceitaInteira * qtd)
+      setValue(`itens.${index}.valorItem`, custoCruReceitaInteira * qtd)
     }
   }
 

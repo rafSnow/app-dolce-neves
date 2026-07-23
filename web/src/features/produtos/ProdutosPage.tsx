@@ -153,33 +153,6 @@ export function ProdutosPage() {
                   R$ {produto.custoUnitario?.toFixed(2) || '0.00'}
                 </span>
               </div>
-              <div className="flex justify-between items-center text-sm mb-1">
-                <span className="font-semibold text-emerald-800">Venda Sugerida (Un.)</span>
-                <span className="font-bold text-emerald-700">
-                  R$ {produto.precoVendaCalculado?.toFixed(2) || '0.00'}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-sm mb-3">
-                <span className="font-semibold text-blue-700">Lucro (Un.)</span>
-                <span className="font-bold text-blue-700">
-                  R$ {produto.lucroUnitario?.toFixed(2) || '0.00'}
-                </span>
-              </div>
-              
-              <div className="h-px bg-gray-200/60 w-full mb-3"></div>
-
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-medium text-dolce-marrom/60">Faturamento da Receita:</span>
-                <span className="font-bold text-dolce-marrom">
-                  R$ {produto.faturamentoTotal?.toFixed(2) || '0.00'}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-medium text-dolce-marrom/60">Lucro da Receita:</span>
-                <span className="font-bold text-dolce-marrom">
-                  R$ {produto.lucroTotal?.toFixed(2) || '0.00'}
-                </span>
-              </div>
             </div>
 
             {/* Card Footer Actions */}
