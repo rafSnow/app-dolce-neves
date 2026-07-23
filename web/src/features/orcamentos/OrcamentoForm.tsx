@@ -35,7 +35,6 @@ const orcamentoSchema = z.object({
   custoInsumosTotal: z.number().min(0),
   custoMaoDeObraTotal: z.number().min(0),
   lucroEstimado: z.number(),
-  lucroInsumosExtrasPercentual: z.number().min(0).optional(),
   valorTotalSugerido: z.number().min(0),
   valorTotal: z.number().min(0) // Valor final aplicado
 })
@@ -77,7 +76,6 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
       custoInsumosTotal: 0,
       custoMaoDeObraTotal: 0,
       lucroEstimado: 0,
-      lucroInsumosExtrasPercentual: 0,
       valorTotalSugerido: 0,
       valorTotal: 0,
       dataEntrega: new Date().toISOString().split('T')[0]
@@ -253,33 +251,69 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
 
     // 2. Soma das Embalagens Extras
     if (insumosDB) {
+      // Find the primary margin (from the first item, or 0 if none)
+      let primaryMarkup = 0
+      let primaryComissao = 0
+      if (watchedItens.length > 0 && produtosDB) {
+        const firstProd = produtosDB.find((p: any) => p.id === watchedItens[0].produtoId)
+        if (firstProd) {
+          primaryMarkup = firstProd.margemLucro || 0
+          primaryComissao = firstProd.comissaoPerc || 0
+        }
+      }
+
       watchedEmbalagens.forEach(emb => {
         if (emb.insumoId && emb.quantidade) {
           const insumoDoc = insumosDB.find((i: any) => i.id === emb.insumoId)
           if (insumoDoc) {
             const custoUnidade = insumoDoc.custoPorUnidadeMedida ?? (insumoDoc.pesoVolumeTotal > 0 ? (insumoDoc.precoCompra / insumoDoc.pesoVolumeTotal) : 0)
-            total += custoUnidade * emb.quantidade
+            const custoEmbalagemTotal = custoUnidade * emb.quantidade
+            // Aplicar margem e comissão sobre a embalagem extra
+            const valorVendaEmbalagem = custoEmbalagemTotal * (1 + (primaryMarkup + primaryComissao) / 100)
+            total += valorVendaEmbalagem
           }
         }
       })
     }
     
-    // 3. Acrescenta custo e lucro de Insumos Extras
+    // 3. Acrescenta custo e lucro de Insumos Extras com base na FT específica
     let custoInsumosExtras = 0
-    const lucroPercentualExtras = watch('lucroInsumosExtrasPercentual') || 0
+    let lucroInsumosExtrasAplicado = 0
     
     gruposInsumos.forEach(grupo => {
-      grupo.itens.forEach(item => {
+      // Tenta achar a FT correspondente a este grupo para pegar a margem
+      let markupFT = 0
+      let comissaoFT = 0
+      if (produtosDB) {
+        const prod = produtosDB.find((p: any) => p.nome === grupo.titulo)
+        if (prod) {
+          markupFT = prod.margemLucro || 0
+          comissaoFT = prod.comissaoPerc || 0
+        } else {
+          // Se for "Geral", usa a primary margin
+          if (watchedItens.length > 0) {
+            const firstProd = produtosDB.find((p: any) => p.id === watchedItens[0].produtoId)
+            if (firstProd) {
+              markupFT = firstProd.margemLucro || 0
+              comissaoFT = firstProd.comissaoPerc || 0
+            }
+          }
+        }
+      }
+
+      grupo.itens.forEach((item: any) => {
         const diff = (item.quantidadeParaBaixar || 0) - (item.quantidadeOriginal || 0)
         // Somente extra, nunca a menos (se pediu pra tirar, nao desconta)
         if (diff > 0) {
-          custoInsumosExtras += diff * (item.custoUnidade || 0)
+          const custoExtraItem = diff * (item.custoUnidade || 0)
+          custoInsumosExtras += custoExtraItem
+          lucroInsumosExtrasAplicado += custoExtraItem * (1 + (markupFT + comissaoFT) / 100)
         }
       })
     })
 
-    if (custoInsumosExtras > 0) {
-      total += custoInsumosExtras * (1 + lucroPercentualExtras / 100)
+    if (lucroInsumosExtrasAplicado > 0) {
+      total += lucroInsumosExtrasAplicado
     }
 
     // 4. Calcula o Custo Total da Produção do Orçamento (Sempre reflete o que foi efetivamente gasto)
@@ -304,7 +338,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
     setValue('custoInsumosTotal', sumInsumos)
     setValue('custoMaoDeObraTotal', valorTrabalhoCalculado)
     setValue('lucroEstimado', lucroFinal)
-  }, [JSON.stringify(watchedItens), JSON.stringify(watchedEmbalagens), produtosDB, insumosDB, configs, setValue, watch('lucroInsumosExtrasPercentual')])
+  }, [JSON.stringify(watchedItens), JSON.stringify(watchedEmbalagens), produtosDB, insumosDB, configs, setValue])
 
   const handleUpdateQty = (gIndex: number, iIndex: number, newVal: number) => {
     // Usa getValues para ter o estado mais atual sem depender de closure stale
@@ -494,23 +528,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
           <div className="space-y-6">
             <div className="bg-dolce-rosa-claro/20 p-4 rounded-xl border border-dolce-rosa-claro/50 flex items-start gap-3 text-dolce-marrom/80 text-sm font-medium">
               <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-dolce-rosa" />
-              <p>Aqui você pode alterar a quantidade de insumos que serão efetivamente usados neste pedido. Adições de insumos aumentarão o valor final baseadas na margem definida abaixo. Reduções não alteram o valor.</p>
-            </div>
-            
-            <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm flex items-center justify-between">
-              <div>
-                <h4 className="font-bold text-dolce-marrom">Lucro sobre Insumos Extras (%)</h4>
-                <p className="text-xs text-gray-500">Quanto aplicar de margem em cima dos ingredientes adicionais.</p>
-              </div>
-              <input 
-                type="number" 
-                min="0"
-                {...register('lucroInsumosExtrasPercentual', { 
-                  valueAsNumber: true,
-                  setValueAs: (v) => (Number.isNaN(v) || v === '' ? 0 : Number(v))
-                })} 
-                className="w-24 bg-gray-50 border border-gray-300 rounded-lg p-2 text-right font-bold text-dolce-marrom focus:ring-2 focus:ring-dolce-rosa"
-              />
+              <p>Aqui você pode alterar a quantidade de insumos que serão efetivamente usados neste pedido. Adições de insumos aumentarão o valor final baseadas na margem definida da Ficha Técnica. Reduções não alteram o valor.</p>
             </div>
 
             {gruposInsumos.map((grupo: any, gIndex: number) => (
