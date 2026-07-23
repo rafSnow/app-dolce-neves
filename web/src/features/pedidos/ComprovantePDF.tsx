@@ -72,9 +72,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   col1: { width: '50%' },
-  col2: { width: '15%', textAlign: 'center' },
-  col3: { width: '15%', textAlign: 'right' },
-  col4: { width: '20%', textAlign: 'right' },
+  col2: { width: '20%', textAlign: 'center' },
+  col4: { width: '30%', textAlign: 'right' },
   totals: {
     marginTop: 20,
     borderTopWidth: 1,
@@ -192,14 +191,12 @@ export function ComprovantePDF({ pedido, nomeNegocio, isOrcamento }: Props) {
           <View style={styles.tableHeader}>
             <Text style={styles.col1}>Produto</Text>
             <Text style={styles.col2}>Qtd</Text>
-            <Text style={styles.col3}>Unitário</Text>
             <Text style={styles.col4}>Subtotal</Text>
           </View>
           {itensProcessados.map((item: any, idx: number) => (
             <View key={idx} style={styles.tableRow}>
               <Text style={styles.col1}>{item.produtoNome}</Text>
               <Text style={styles.col2}>{item.quantidade}</Text>
-              <Text style={styles.col3}>{formatCurrency(item.precoUnitarioFinal)}</Text>
               <Text style={styles.col4}>{formatCurrency(item.valorItemFinal)}</Text>
             </View>
           ))}
