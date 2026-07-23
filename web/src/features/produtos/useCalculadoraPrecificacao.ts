@@ -26,17 +26,13 @@ export function useCalculadoraPrecificacao() {
     return custoTotal / rendimento
   }
 
-  const calcularPrecoVendaSugerido = (custoUnitario: number, markupPercentual: number, comissaoPercentual: number) => {
-    // PV = Custo / (1 - (Markup + Comissão) / 100)
-    // Usando uma margem simples por baixo (Custo + Margem% + Comissao%) para facilitar confeitaria caseira
-    const valorComissao = custoUnitario * (comissaoPercentual / 100)
+  const calcularPrecoVendaSugerido = (custoUnitario: number, markupPercentual: number) => {
     const valorLucro = custoUnitario * (markupPercentual / 100)
-    return custoUnitario + valorComissao + valorLucro
+    return custoUnitario + valorLucro
   }
 
-  const verificarAlertaMargem = (precoVenda: number, custoUnitario: number, comissaoPercentual: number) => {
-    const valorComissao = precoVenda * (comissaoPercentual / 100)
-    const lucroReal = precoVenda - custoUnitario - valorComissao
+  const verificarAlertaMargem = (precoVenda: number, custoUnitario: number) => {
+    const lucroReal = precoVenda - custoUnitario
     const margemReal = precoVenda > 0 ? (lucroReal / precoVenda) * 100 : 0
     
     return {

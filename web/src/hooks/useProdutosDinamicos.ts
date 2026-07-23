@@ -47,9 +47,9 @@ export function useProdutosDinamicos() {
       custoTotalAtualizado += custoMaoDeObra
 
       const custoUnitario = calcularCustoUnitario(custoTotalAtualizado, produto.rendimentoReceita)
-      const precoCalculado = calcularPrecoVendaSugerido(custoUnitario, produto.margemLucro || 0, produto.comissaoPerc || 0)
+      const precoCalculado = calcularPrecoVendaSugerido(custoUnitario, produto.margemLucro || 0)
       
-      const alerta = verificarAlertaMargem(precoCalculado, custoUnitario, produto.comissaoPerc || 0)
+      const alerta = verificarAlertaMargem(precoCalculado, custoUnitario)
       const faturamentoTotal = precoCalculado * (produto.rendimentoReceita || 1)
       const lucroTotal = alerta.lucroReal * (produto.rendimentoReceita || 1)
 

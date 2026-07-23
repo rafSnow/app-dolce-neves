@@ -17,18 +17,18 @@ describe('useCalculadoraPrecificacao', () => {
     expect(calcularCustoUnitario(10.00, 0)).toBe(0) // Safe fail
   })
 
-  it('deve alertar prejuízo se preço de venda não cobre os custos e comissão', () => {
-    // Preço venda = 10. Custo = 8. Comissao = 30% (3 reais). Lucro = -1 (Prejuízo)
-    const alerta = verificarAlertaMargem(10, 8, 30)
-    expect(alerta.isPrejuizo).toBe(true)
-    expect(alerta.lucroReal).toBe(-1)
+  it('deve alertar prejuízo se preço de venda não cobre os custos', () => {
+    // Preço venda = 10. Custo = 12. Lucro = -2
+    const { lucroReal, isPrejuizo } = verificarAlertaMargem(10, 12)
+    expect(isPrejuizo).toBe(true)
+    expect(lucroReal).toBe(-2)
   })
 
   it('deve alertar margem baixa (< 20%)', () => {
-    // Preço = 10, Custo = 7, Comissao = 20% (2). Lucro = 1 (10%).
-    const alerta = verificarAlertaMargem(10, 7, 20)
-    expect(alerta.isPrejuizo).toBe(false)
-    expect(alerta.isMargemBaixa).toBe(true)
-    expect(alerta.margemReal).toBe(10)
+    // Preço = 10, Custo = 8.5. Lucro = 1.5. MargemReal = 15%.
+    const { lucroReal, margemReal, isMargemBaixa } = verificarAlertaMargem(10, 8.5)
+    expect(isMargemBaixa).toBe(true)
+    expect(lucroReal).toBe(1.5)
+    expect(margemReal).toBe(15)
   })
 })

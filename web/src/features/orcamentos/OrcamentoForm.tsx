@@ -253,12 +253,10 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
     if (insumosDB) {
       // Find the primary margin (from the first item, or 0 if none)
       let primaryMarkup = 0
-      let primaryComissao = 0
       if (watchedItens.length > 0 && produtosDB) {
         const firstProd = produtosDB.find((p: any) => p.id === watchedItens[0].produtoId)
         if (firstProd) {
           primaryMarkup = firstProd.margemLucro || 0
-          primaryComissao = firstProd.comissaoPerc || 0
         }
       }
 
@@ -268,8 +266,8 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
           if (insumoDoc) {
             const custoUnidade = insumoDoc.custoPorUnidadeMedida ?? (insumoDoc.pesoVolumeTotal > 0 ? (insumoDoc.precoCompra / insumoDoc.pesoVolumeTotal) : 0)
             const custoEmbalagemTotal = custoUnidade * emb.quantidade
-            // Aplicar margem e comissão sobre a embalagem extra
-            const valorVendaEmbalagem = custoEmbalagemTotal * (1 + (primaryMarkup + primaryComissao) / 100)
+            // Aplicar margem sobre a embalagem extra
+            const valorVendaEmbalagem = custoEmbalagemTotal * (1 + (primaryMarkup) / 100)
             total += valorVendaEmbalagem
           }
         }
@@ -283,19 +281,16 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
     gruposInsumos.forEach(grupo => {
       // Tenta achar a FT correspondente a este grupo para pegar a margem
       let markupFT = 0
-      let comissaoFT = 0
       if (produtosDB) {
         const prod = produtosDB.find((p: any) => p.nome === grupo.titulo)
         if (prod) {
           markupFT = prod.margemLucro || 0
-          comissaoFT = prod.comissaoPerc || 0
         } else {
           // Se for "Geral", usa a primary margin
           if (watchedItens.length > 0) {
             const firstProd = produtosDB.find((p: any) => p.id === watchedItens[0].produtoId)
             if (firstProd) {
               markupFT = firstProd.margemLucro || 0
-              comissaoFT = firstProd.comissaoPerc || 0
             }
           }
         }
@@ -307,7 +302,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
         if (diff > 0) {
           const custoExtraItem = diff * (item.custoUnidade || 0)
           custoInsumosExtras += custoExtraItem
-          lucroInsumosExtrasAplicado += custoExtraItem * (1 + (markupFT + comissaoFT) / 100)
+          lucroInsumosExtrasAplicado += custoExtraItem * (1 + (markupFT) / 100)
         }
       })
     })
@@ -329,16 +324,23 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
 
     const valorTrabalhoCalculado = (tempoTotal / 60) * valorHoraTrabalhada
     const lucroFinal = total - (sumInsumos + valorTrabalhoCalculado)
+    
+    // Calcula comissão global do orçamento (gross-up para que o subtotal seja preservado após o desconto da taxa)
+    const comissaoGlobal = watch('comissaoPercentual') || 0
+    let totalComComissao = total
+    if (comissaoGlobal > 0 && comissaoGlobal < 100) {
+      totalComComissao = total / (1 - (comissaoGlobal / 100))
+    }
 
-    setValue('valorTotal', total)
+    setValue('valorTotal', totalComComissao)
     setValue('tempoEstimadoTotal', Math.round(tempoTotal))
     
     // Agora preenchemos corretamente os custos para que a Precificação Mágica do Orçamento funcione
-    setValue('valorTotalSugerido', total)
+    setValue('valorTotalSugerido', totalComComissao)
     setValue('custoInsumosTotal', sumInsumos)
     setValue('custoMaoDeObraTotal', valorTrabalhoCalculado)
     setValue('lucroEstimado', lucroFinal)
-  }, [JSON.stringify(watchedItens), JSON.stringify(watchedEmbalagens), produtosDB, insumosDB, configs, setValue])
+  }, [JSON.stringify(watchedItens), JSON.stringify(watchedEmbalagens), watch('comissaoPercentual'), produtosDB, insumosDB, configs, setValue])
 
   const handleUpdateQty = (gIndex: number, iIndex: number, newVal: number) => {
     // Usa getValues para ter o estado mais atual sem depender de closure stale
@@ -579,12 +581,30 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
       </div>
 
       {/* RENDERIZA O TOTAL DO ORÇAMENTO IGUAL AO PEDIDO */}
-      <div className="mb-4 bg-dolce-rosa-claro/20 p-5 rounded-2xl border border-dolce-rosa-claro/50 flex justify-between items-center">
-        <div className="flex flex-col">
-          <span className="text-sm font-bold text-dolce-marrom/70 uppercase">Total do Orçamento</span>
-          <span className="text-xs text-dolce-marrom/50 mt-1">Este valor será utilizado se o pedido for aprovado.</span>
+      <div className="mb-4 bg-dolce-rosa-claro/20 p-5 rounded-2xl border border-dolce-rosa-claro/50 flex flex-col gap-4">
+        
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-dolce-rosa-claro/30 pb-4">
+          <div className="flex flex-col">
+            <label className="text-sm font-bold text-dolce-marrom/70 uppercase">Taxa / Comissão (%)</label>
+            <span className="text-xs text-dolce-marrom/50 mt-1">Acrescido no valor final (ex: taxa da maquininha).</span>
+          </div>
+          <div className="relative w-32">
+            <input 
+              type="number" step="0.1" 
+              {...register('comissaoPercentual', { valueAsNumber: true })} 
+              className="w-full bg-white border border-dolce-rosa-claro/50 rounded-xl px-4 py-2 text-dolce-marrom font-bold focus:ring-2 focus:ring-dolce-rosa focus:border-transparent pr-8 text-right" 
+            />
+            <span className="absolute right-3 top-2.5 text-gray-400 font-bold">%</span>
+          </div>
         </div>
-        <h3 className="text-3xl font-black text-dolce-rosa">R$ {(watch('valorTotal') || 0).toFixed(2)}</h3>
+
+        <div className="flex justify-between items-center">
+          <div className="flex flex-col">
+            <span className="text-sm font-bold text-dolce-marrom/70 uppercase">Total do Orçamento</span>
+            <span className="text-xs text-dolce-marrom/50 mt-1">Este valor será utilizado se o pedido for aprovado.</span>
+          </div>
+          <h3 className="text-3xl font-black text-dolce-rosa">R$ {(watch('valorTotal') || 0).toFixed(2)}</h3>
+        </div>
       </div>
 
       {/* FOOTER ACTIONS FIXAS */}

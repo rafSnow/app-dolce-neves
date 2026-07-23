@@ -12,7 +12,6 @@ const produtoSchema = z.object({
   nome: z.string().min(1, 'Nome é obrigatório'),
   rendimentoReceita: z.number().min(1, 'Mínimo de 1'),
   tempoEstimadoMinutos: z.number().min(0, 'Mínimo de 0').optional(),
-  comissaoPerc: z.number().min(0).max(100),
   margemLucro: z.number().min(0, 'Inválido'),
   ativo: z.boolean(),
   insumos: z.array(z.object({
@@ -42,7 +41,6 @@ export function ProdutoForm({ initialData, onSubmit, onCancel }: Props) {
       nome: '',
       rendimentoReceita: 1,
       tempoEstimadoMinutos: 0,
-      comissaoPerc: 0,
       margemLucro: 100, // Margem padrão
       ativo: true,
       insumos: []
@@ -62,13 +60,12 @@ export function ProdutoForm({ initialData, onSubmit, onCancel }: Props) {
   const insumosUsados = watch('insumos') || []
   const rendimento = watch('rendimentoReceita') || 1
   const margem = watch('margemLucro') || 0
-  const comissao = watch('comissaoPerc') || 0
   const tempoEstimadoMinutos = watch('tempoEstimadoMinutos') || 0
 
   const { custoTotal, custoInsumos, custoMaoDeObra } = calcularCustoTotalReceita(insumosUsados, tempoEstimadoMinutos, valorHoraTrabalhada)
   const custoUnitario = calcularCustoUnitario(custoTotal, rendimento)
-  const precoVendaCalculado = calcularPrecoVendaSugerido(custoUnitario, margem, comissao)
-  const alerta = verificarAlertaMargem(precoVendaCalculado, custoUnitario, comissao)
+  const precoVendaCalculado = calcularPrecoVendaSugerido(custoUnitario, margem)
+  const alerta = verificarAlertaMargem(precoVendaCalculado, custoUnitario)
   
   const precoVendaReceitaTotal = precoVendaCalculado * rendimento
   const lucroReceitaTotal = alerta.lucroReal * rendimento
@@ -279,21 +276,13 @@ export function ProdutoForm({ initialData, onSubmit, onCancel }: Props) {
         </div>
 
         {/* Form Controls */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 gap-4 mb-6">
           <div>
             <label className="block text-xs font-bold text-emerald-800 mb-1.5 uppercase tracking-wide">Margem de Lucro Desejada (%)</label>
             <input 
               type="number" step="0.1" 
               {...register('margemLucro', { valueAsNumber: true })} 
               className="w-full bg-white border border-emerald-200 text-emerald-900 font-bold rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all text-lg" 
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-dolce-marrom/60 mb-1.5 uppercase tracking-wide">Taxas / Comissão de Venda (%)</label>
-            <input 
-              type="number" step="0.1" 
-              {...register('comissaoPerc', { valueAsNumber: true })} 
-              className="w-full bg-white border border-gray-200 text-dolce-marrom font-bold rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-gray-500/30 transition-all text-lg" 
             />
           </div>
         </div>
@@ -315,9 +304,8 @@ export function ProdutoForm({ initialData, onSubmit, onCancel }: Props) {
                     const finalPrice = parseFloat(e.target.value)
                     if (!isNaN(finalPrice)) {
                       if (custoUnitario > 0) {
-                        const baseComissao = custoUnitario * (comissao / 100)
-                        let newMargin = ((finalPrice - custoUnitario - baseComissao) / custoUnitario) * 100
-                        if (newMargin < 0) newMargin = 0 // Prevents negative margin in DB, although theoretically possible, typically business won't save negative margin here
+                        let newMargin = ((finalPrice - custoUnitario) / custoUnitario) * 100
+                        if (newMargin < 0) newMargin = 0
                         setValue('margemLucro', newMargin)
                       } else {
                         setValue('margemLucro', 100)
