@@ -393,7 +393,7 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
                             if (p) {
                               setValue(`itens.${index}.produtoNome`, p.nome)
                               // Na nova arquitetura, o item.valorItem da Ficha Técnica é apenas o custo cru, pois a margem é global
-                              const custoCruReceitaInteira = p.custoTotalReceita * (p.rendimentoReceita || 1)
+                              const custoCruReceitaInteira = p.custoTotalReceita
                               setValue(`itens.${index}.precoUnitarioSnapshot`, custoCruReceitaInteira)
                               setValue(`itens.${index}.valorItem`, custoCruReceitaInteira * (watchedItens[index]?.quantidade || 1))
                             }

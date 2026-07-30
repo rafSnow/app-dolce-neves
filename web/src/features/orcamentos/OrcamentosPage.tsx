@@ -66,6 +66,7 @@ export function OrcamentosPage() {
         valorTotal: orc.valorTotal,
         estoqueBaixado: false,
         status: 'Aberto',
+        margemLucro: orc.margemLucro || 0,
         ativo: true,
         pagamentos: {
           sinal: { valor: 0, status: 'Pendente', forma: '' },
@@ -73,6 +74,7 @@ export function OrcamentosPage() {
         },
         itens: orc.itens,
         embalagensExtras: orc.embalagensExtras || [],
+        insumosCustomizados: orc.insumosCustomizados || [],
         orcamentoOrigemId: orc.id
       }
       

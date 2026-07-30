@@ -41,7 +41,9 @@ const pedidoSchema = z.object({
     insumoId: z.string(),
     insumoNome: z.string(),
     quantidade: z.number().min(1)
-  })).optional()
+  })).optional(),
+  insumosCustomizados: z.any().optional(),
+  orcamentoOrigemId: z.string().optional()
 })
 
 export type PedidoFormData = z.infer<typeof pedidoSchema>
@@ -108,6 +110,14 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
             const custoPorUnidade = insumoDoc.precoCompra / insumoDoc.pesoVolumeTotal
             total += custoPorUnidade * emb.quantidade
           }
+        }
+      })
+      
+      // Adiciona custo de insumos customizados herdados do orçamento
+      const insCustom = watch('insumosCustomizados') || []
+      insCustom.forEach((ic: any) => {
+        if (ic.custoProporcionalAtual) {
+          total += ic.custoProporcionalAtual
         }
       })
     }
@@ -232,7 +242,7 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
     if (prod) {
       setValue(`itens.${index}.produtoNome`, prod.nome)
       // O preço a ser cobrado agora baseia-se no Custo Cru (pois a margem é aplicada no total do pedido)
-      const custoCruReceitaInteira = prod.custoTotalReceita * (prod.rendimentoReceita || 1)
+      const custoCruReceitaInteira = prod.custoTotalReceita
       setValue(`itens.${index}.precoUnitarioSnapshot`, custoCruReceitaInteira)
       const qtd = watch(`itens.${index}.quantidade`) || 1
       setValue(`itens.${index}.valorItem`, custoCruReceitaInteira * qtd)
