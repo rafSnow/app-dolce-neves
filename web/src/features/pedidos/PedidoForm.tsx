@@ -43,6 +43,7 @@ const pedidoSchema = z.object({
     quantidade: z.number().min(1)
   })).optional(),
   insumosCustomizados: z.any().optional(),
+  acrescimoPersonalizacao: z.number().optional(),
   orcamentoOrigemId: z.string().optional()
 })
 
@@ -131,14 +132,23 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
         }
       })
       
-      // Adiciona custo de insumos customizados herdados do orçamento
-      const insCustom = watch('insumosCustomizados') || []
-      insCustom.forEach((ic: any) => {
-        if (ic.custoProporcionalAtual) {
-          total += ic.custoProporcionalAtual
-        }
-      })
     }
+
+    // Calcula a diferença de personalização caso tenha vindo de um orçamento
+    // O Orcamento salva "Itens Gerais" (Fitas, Adesivos) que o Pedido não tem no seu schema de UI.
+    // Para não perder esses custos na soma, extraímos matematicamente a diferença.
+    let delta = watch('acrescimoPersonalizacao') || 0
+    if (initialData?.orcamentoOrigemId && initialData?.valorTotal && total > 0) {
+      // Usa um ref ou o próprio valor para não ficar setando infinitamente
+      if (!watch('acrescimoPersonalizacao')) {
+         const custoCruOriginal = initialData.valorTotal / (1 + ((initialData.margemLucro || 100) / 100))
+         if (custoCruOriginal > total + 0.5) {
+            delta = custoCruOriginal - total
+            setTimeout(() => setValue('acrescimoPersonalizacao', delta), 0)
+         }
+      }
+    }
+    total += delta
 
     // Aplica a Margem do Pedido sobre o custo cru total
     const margem = watch('margemLucro') || 100
