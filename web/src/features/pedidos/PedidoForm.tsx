@@ -513,6 +513,31 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
           </div>
         </div>
 
+        {/* Resumo / Detalhamento de Custos */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 shadow-sm flex flex-col gap-2">
+           <div className="flex justify-between items-center text-sm">
+             <span className="text-gray-500 font-medium">Custo Base (Receitas + Embalagens Extras):</span>
+             <span className="text-gray-700 font-semibold">
+               R$ {((valorTotal || 0) / (1 + ((watch('margemLucro') || 100) / 100)) - (watch('acrescimoPersonalizacao') || 0)).toFixed(2)}
+             </span>
+           </div>
+           {(watch('acrescimoPersonalizacao') || 0) > 0 && (
+             <div className="flex justify-between items-center text-sm">
+               <span className="text-gray-500 font-medium">Itens Gerais / Personalização (Herdado do Orçamento):</span>
+               <span className="text-gray-700 font-semibold">R$ {(watch('acrescimoPersonalizacao') || 0).toFixed(2)}</span>
+             </div>
+           )}
+           <div className="flex justify-between items-center text-sm">
+             <span className="text-gray-500 font-medium">Margem de Lucro / Rentabilidade:</span>
+             <span className="text-blue-600 font-bold">{watch('margemLucro') || 100}%</span>
+           </div>
+           <div className="border-t border-gray-100 my-1"></div>
+           <div className="flex justify-between items-center">
+             <span className="text-dolce-marrom font-bold">Valor Total (Preço Final de Venda):</span>
+             <span className="text-emerald-600 font-black text-lg">R$ {valorTotal?.toFixed(2) || '0.00'}</span>
+           </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* SINAL */}
           <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-4">
