@@ -90,16 +90,34 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
   useEffect(() => {
     let total = 0
     let totalMinutos = 0
+    let needsHeal = false
 
-    itens.forEach(item => {
-      total += (item.valorItem || 0)
+    const healedItens = itens.map(item => {
+      let healedItem = { ...item }
       if (produtosDB) {
         const prod = produtosDB.find(p => p.id === item.produtoId)
         if (prod && prod.tempoEstimadoMinutos) {
           totalMinutos += prod.tempoEstimadoMinutos * (item.quantidade || 1)
         }
+        
+        // Auto-heal: Se o preço salvo for > 3x o custo base atual e a receita rende mais de 1, 
+        // significa que esse item foi salvo durante o bug que multiplicava o custo pelo rendimento.
+        if (prod && prod.rendimentoReceita && prod.rendimentoReceita > 1) {
+           if (item.precoUnitarioSnapshot > prod.custoTotalReceita * 3) {
+             needsHeal = true
+             const correctedSnapshot = item.precoUnitarioSnapshot / prod.rendimentoReceita
+             healedItem.precoUnitarioSnapshot = correctedSnapshot
+             healedItem.valorItem = correctedSnapshot * (item.quantidade || 1)
+           }
+        }
       }
+      total += (healedItem.valorItem || 0)
+      return healedItem
     })
+
+    if (needsHeal) {
+      setTimeout(() => setValue('itens', healedItens), 0)
+    }
 
     // Adiciona o custo das embalagens extras ao valor total do pedido
     if (insumosDB) {

@@ -237,14 +237,31 @@ export function OrcamentoForm({ initialData, onSubmit, onCancel }: Props) {
     let tempoTotal = 0
 
     // 1. Custo dos produtos originais e Mão de Obra
-    watchedItens.forEach(item => {
+    let needsHeal = false
+    const healedItens = watchedItens.map(item => {
+      let healedItem = { ...item }
       if (produtosDB) {
         const prod = produtosDB.find(p => p.id === item.produtoId)
         if (prod && prod.tempoEstimadoMinutos) {
           tempoTotal += prod.tempoEstimadoMinutos * (item.quantidade || 1)
         }
+        
+        // Auto-heal de bug passado
+        if (prod && prod.rendimentoReceita && prod.rendimentoReceita > 1) {
+           if (item.precoUnitarioSnapshot > prod.custoTotalReceita * 3) {
+             needsHeal = true
+             const correctedSnapshot = item.precoUnitarioSnapshot / prod.rendimentoReceita
+             healedItem.precoUnitarioSnapshot = correctedSnapshot
+             healedItem.valorItem = correctedSnapshot * (item.quantidade || 1)
+           }
+        }
       }
+      return healedItem
     })
+
+    if (needsHeal) {
+      setTimeout(() => setValue('itens', healedItens), 0)
+    }
 
     // 2. Custo das Embalagens Extras
     if (insumosDB) {
