@@ -6,6 +6,7 @@ import { Pencil, Trash2, Plus, ShoppingBag, Calendar, DollarSign, X, CheckCircle
 import * as Dialog from '@radix-ui/react-dialog'
 import { pdf } from '@react-pdf/renderer'
 import { ComprovantePDF } from './ComprovantePDF'
+import { Pagination } from '@/components/Pagination'
 import { toast } from 'sonner'
 
 export function PedidosPage() {
@@ -27,6 +28,9 @@ export function PedidosPage() {
   const [editingPedido, setEditingPedido] = useState<(PedidoFormData & {id: string}) | null>(null)
   const [pedidoToCancel, setPedidoToCancel] = useState<(PedidoFormData & {id: string}) | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('Aberto')
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 10
 
   const handleOpenNew = () => {
     setEditingPedido(null)
@@ -93,11 +97,16 @@ export function PedidosPage() {
     if (!pedidos) return []
     return pedidos
       .filter(p => p.ativo !== false)
+      .filter(p => statusFilter === 'Todos' || p.status === statusFilter)
       .filter(p => 
         p.clienteNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.pagamentos.sinal.status.toLowerCase().includes(searchTerm.toLowerCase())
       )
-  }, [pedidos, searchTerm])
+      .sort((a, b) => new Date(b.dataEntrega).getTime() - new Date(a.dataEntrega).getTime())
+  }, [pedidos, searchTerm, statusFilter])
+
+  const totalPages = Math.ceil(filteredPedidos.length / ITEMS_PER_PAGE)
+  const paginatedPedidos = filteredPedidos.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
 
   if (isLoading) return <div className="flex justify-center p-8 text-dolce-marrom/50">Carregando Pedidos...</div>
 
@@ -162,18 +171,38 @@ Qualquer dúvida, estamos à disposição!`
         </button>
       </div>
 
-      {/* BARRA DE BUSCA */}
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-          <Search className="h-5 w-5 text-dolce-marrom/40" />
+      {/* BARRA DE BUSCA E FILTROS */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Search className="h-5 w-5 text-dolce-marrom/40" />
+          </div>
+          <input
+            type="text"
+            className="block w-full pl-11 pr-4 py-3 bg-white/70 border border-gray-200 rounded-2xl text-dolce-marrom placeholder-dolce-marrom/40 focus:outline-none focus:ring-2 focus:ring-dolce-rosa focus:border-transparent transition-all shadow-sm font-medium"
+            placeholder="Buscar por nome do cliente ou status..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value)
+              setCurrentPage(1)
+            }}
+          />
         </div>
-        <input
-          type="text"
-          className="block w-full pl-11 pr-4 py-3 bg-white/70 border border-gray-200 rounded-2xl text-dolce-marrom placeholder-dolce-marrom/40 focus:outline-none focus:ring-2 focus:ring-dolce-rosa focus:border-transparent transition-all shadow-sm font-medium"
-          placeholder="Buscar por nome do cliente ou status..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+        <div className="w-full sm:w-48">
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value)
+              setCurrentPage(1)
+            }}
+            className="block w-full pl-4 pr-10 py-3 bg-white/70 border border-gray-200 rounded-2xl text-dolce-marrom focus:outline-none focus:ring-2 focus:ring-dolce-rosa focus:border-transparent transition-all shadow-sm font-medium appearance-none"
+          >
+            <option value="Todos">Todos os Status</option>
+            <option value="Aberto">Em Aberto</option>
+            <option value="Concluido">Concluído</option>
+            <option value="Cancelado">Cancelado</option>
+          </select>
+        </div>
       </div>
 
       {/* MODAL / BOTTOM SHEET DO FORMULÁRIO */}
@@ -255,8 +284,10 @@ Qualquer dúvida, estamos à disposição!`
       </Dialog.Root>
 
       {/* LISTAGEM (CARDS MOBILE / GRID DESKTOP) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-20 md:pb-0">
-        {filteredPedidos.map(pedido => {
+      {paginatedPedidos.length > 0 && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
+            {paginatedPedidos.map(pedido => {
           const sinalStatus = pedido.pagamentos.sinal.status;
           
           return (
@@ -351,7 +382,15 @@ Qualquer dúvida, estamos à disposição!`
             </div>
           );
         })}
-        
+      </div>
+      
+      <Pagination 
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
+      </>
+      )}
         {pedidos?.length === 0 && !searchTerm && (
           <div className="col-span-full flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-dashed border-dolce-rosa-claro text-dolce-marrom/50">
             <ShoppingBag className="w-16 h-16 mb-4 opacity-30" />

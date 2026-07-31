@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useFirestoreCollection, useFirestoreMutation } from '@/hooks/useFirestore'
 import { Search, Plus, FileText, CheckCircle, X, DollarSign, Calendar, MessageCircle, Ban, Pencil, PackageOpen, ChevronDown, Download, Trash2 } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
+import { Pagination } from '@/components/Pagination'
 import { pdf } from '@react-pdf/renderer'
 import { ComprovantePDF } from '@/features/pedidos/ComprovantePDF'
 import { OrcamentoForm, OrcamentoFormData } from './OrcamentoForm'
@@ -26,6 +27,9 @@ export function OrcamentosPage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingOrcamento, setEditingOrcamento] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('Aberto')
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 10
 
   const handleOpenNew = () => {
     setEditingOrcamento(null)
@@ -178,11 +182,19 @@ export function OrcamentosPage() {
     }
   }
 
-  const filtered = (orcamentos || []).filter(o => 
-    o.ativo !== false &&
-    (o.clienteNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    o.status.toLowerCase().includes(searchTerm.toLowerCase()))
-  ).sort((a, b) => new Date(b.dataEntrega).getTime() - new Date(a.dataEntrega).getTime())
+  const filtered = (orcamentos || []).filter(o => {
+    if (o.ativo === false) return false
+    if (statusFilter !== 'Todos' && o.status !== statusFilter) return false
+    
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase()
+      return o.clienteNome.toLowerCase().includes(term) || o.status.toLowerCase().includes(term)
+    }
+    return true
+  }).sort((a, b) => new Date(b.dataEntrega).getTime() - new Date(a.dataEntrega).getTime())
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
+  const paginatedOrcamentos = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
 
   if (isLoading) return <div className="p-8 text-center text-dolce-marrom/50">Carregando orçamentos...</div>
 
@@ -202,17 +214,37 @@ export function OrcamentosPage() {
         </button>
       </div>
 
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-          <Search className="h-5 w-5 text-dolce-marrom/40" />
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Search className="h-5 w-5 text-dolce-marrom/40" />
+          </div>
+          <input
+            type="text"
+            className="block w-full pl-11 pr-4 py-3 bg-white/70 border border-gray-200 rounded-2xl text-dolce-marrom placeholder-dolce-marrom/40 focus:outline-none focus:ring-2 focus:ring-dolce-rosa focus:border-transparent transition-all shadow-sm font-medium"
+            placeholder="Buscar por cliente..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value)
+              setCurrentPage(1)
+            }}
+          />
         </div>
-        <input
-          type="text"
-          className="block w-full pl-11 pr-4 py-3 bg-white/70 border border-gray-200 rounded-2xl text-dolce-marrom placeholder-dolce-marrom/40 focus:outline-none focus:ring-2 focus:ring-dolce-rosa focus:border-transparent transition-all shadow-sm font-medium"
-          placeholder="Buscar por cliente..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+        <div className="w-full sm:w-48">
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value)
+              setCurrentPage(1)
+            }}
+            className="block w-full pl-4 pr-10 py-3 bg-white/70 border border-gray-200 rounded-2xl text-dolce-marrom focus:outline-none focus:ring-2 focus:ring-dolce-rosa focus:border-transparent transition-all shadow-sm font-medium appearance-none"
+          >
+            <option value="Todos">Todos os Status</option>
+            <option value="Aberto">Em Aberto</option>
+            <option value="Aprovado">Aprovado</option>
+            <option value="Rejeitado">Rejeitado</option>
+          </select>
+        </div>
       </div>
 
       <Dialog.Root open={isFormOpen} onOpenChange={setIsFormOpen}>
@@ -274,10 +306,11 @@ export function OrcamentosPage() {
         </div>
       )}
 
-      {filtered.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-20 md:pb-0">
-          {filtered.map(orc => (
-            <div key={orc.id} className="bg-white rounded-2xl shadow-sm border border-dolce-rosa-claro/50 flex flex-col overflow-hidden hover:shadow-md transition-shadow">
+      {paginatedOrcamentos.length > 0 && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
+            {paginatedOrcamentos.map(orc => (
+              <div key={orc.id} className="bg-white rounded-2xl shadow-sm border border-dolce-rosa-claro/50 flex flex-col overflow-hidden hover:shadow-md transition-shadow">
               <div className="p-5 pb-3 border-b border-gray-50 flex justify-between items-start">
                 <div className="flex-1 pr-2">
                   <div className="flex items-center gap-2 mb-1">
@@ -455,7 +488,14 @@ export function OrcamentosPage() {
             </div>
           ))}
         </div>
-      )}
+        
+        <Pagination 
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
+      </>
+    )}
 
       {/* FAB Mobile */}
       <button 
