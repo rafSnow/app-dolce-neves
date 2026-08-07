@@ -37,21 +37,28 @@ export function useDashboardMetrics({ pedidos = [], despesas = [], referenceDate
     pedidos.forEach(p => {
       if (p.status === 'Cancelado') return
       
-      // O faturamento ocorre na data do pedido
+      // O faturamento (vendas totais realizadas no mês) ocorre na data do pedido
       if (isThisMonth(p.dataPedido)) {
         totalFaturadoMes += p.valorTotal
+      }
 
-        // Recebimentos isolados
-        const sinal = p.pagamentos?.sinal
-        if (sinal?.status === 'Recebido') {
-           // Se não tem data especifica, assume a data do pedido
+      // Recebimentos isolados (entradas reais no caixa no mês)
+      const sinal = p.pagamentos?.sinal
+      if (sinal?.status === 'Recebido') {
+         // Se não tem data especifica, assume a data de criação do pedido
+         const dataSinal = sinal.data || p.dataPedido
+         if (isThisMonth(dataSinal)) {
            totalRecebidoMes += sinal.valor
-        }
+         }
+      }
 
-        const restante = p.pagamentos?.restante
-        if (restante?.status === 'Recebido') {
+      const restante = p.pagamentos?.restante
+      if (restante?.status === 'Recebido') {
+         // Se não tem data especifica, assume a data de entrega do evento
+         const dataRestante = restante.data || p.dataEntrega
+         if (isThisMonth(dataRestante)) {
            totalRecebidoMes += restante.valor
-        }
+         }
       }
     })
 

@@ -565,17 +565,30 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
                 </select>
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-dolce-marrom/70 mb-1">Forma de Pagamento</label>
-              <select 
-                {...register('pagamentos.sinal.forma')} 
-                className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none appearance-none"
-              >
-                <option value="Pix">Pix</option>
-                <option value="Dinheiro">Dinheiro</option>
-                <option value="Cartão">Cartão</option>
-              </select>
+              <div className="flex-1">
+                <label className="block text-xs font-semibold text-dolce-marrom/70 mb-1">Forma de Pagamento</label>
+                <select 
+                  {...register('pagamentos.sinal.forma')} 
+                  className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none appearance-none"
+                >
+                  <option value="Pix">Pix</option>
+                  <option value="Dinheiro">Dinheiro</option>
+                  <option value="Cartão">Cartão</option>
+                </select>
+              </div>
             </div>
+            
+            {watch('pagamentos.sinal.status') === 'Recebido' && (
+              <div>
+                <label className="block text-xs font-semibold text-dolce-marrom/70 mb-1">Data do Pagamento (Opcional)</label>
+                <input 
+                  type="date"
+                  {...register('pagamentos.sinal.data')} 
+                  className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">Se não preenchida, o sistema usará a data de criação do pedido no caixa.</p>
+              </div>
+            )}
           </div>
 
           {/* RESTANTE */}
@@ -605,17 +618,30 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
                 </select>
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-dolce-marrom/70 mb-1">Forma Prevista</label>
-              <select 
-                {...register('pagamentos.restante.forma')} 
-                className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all outline-none appearance-none"
-              >
-                <option value="Pix">Pix</option>
-                <option value="Dinheiro">Dinheiro</option>
-                <option value="Cartão">Cartão</option>
-              </select>
+              <div className="flex-1">
+                <label className="block text-xs font-semibold text-dolce-marrom/70 mb-1">Forma Prevista</label>
+                <select 
+                  {...register('pagamentos.restante.forma')} 
+                  className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all outline-none appearance-none"
+                >
+                  <option value="Pix">Pix</option>
+                  <option value="Dinheiro">Dinheiro</option>
+                  <option value="Cartão">Cartão</option>
+                </select>
+              </div>
             </div>
+
+            {watch('pagamentos.restante.status') === 'Recebido' && (
+              <div>
+                <label className="block text-xs font-semibold text-dolce-marrom/70 mb-1">Data do Pagamento (Opcional)</label>
+                <input 
+                  type="date"
+                  {...register('pagamentos.restante.data')} 
+                  className="w-full bg-gray-50 border border-gray-200 text-dolce-marrom rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all outline-none"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">Se não preenchida, o sistema usará a data de entrega do pedido no caixa.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
