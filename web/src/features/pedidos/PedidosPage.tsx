@@ -413,7 +413,6 @@ Qualquer dúvida, estamos à disposição!`
             <p className="text-sm font-medium text-center px-4">Não encontramos pedidos para "{searchTerm}".</p>
           </div>
         )}
-      </div>
 
       {/* FAB (Floating Action Button) MOBILE */}
       <button

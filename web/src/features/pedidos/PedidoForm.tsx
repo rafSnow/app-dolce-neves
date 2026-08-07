@@ -564,7 +564,6 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
                   <option value="Recebido">Recebido</option>
                 </select>
               </div>
-            </div>
               <div className="flex-1">
                 <label className="block text-xs font-semibold text-dolce-marrom/70 mb-1">Forma de Pagamento</label>
                 <select 
@@ -577,7 +576,6 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
                 </select>
               </div>
             </div>
-            
             {watch('pagamentos.sinal.status') === 'Recebido' && (
               <div>
                 <label className="block text-xs font-semibold text-dolce-marrom/70 mb-1">Data do Pagamento (Opcional)</label>
@@ -617,7 +615,6 @@ export function PedidoForm({ initialData, onSubmit, onCancel }: Props) {
                   <option value="Recebido">Recebido</option>
                 </select>
               </div>
-            </div>
               <div className="flex-1">
                 <label className="block text-xs font-semibold text-dolce-marrom/70 mb-1">Forma Prevista</label>
                 <select 
